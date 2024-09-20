@@ -34,7 +34,7 @@ view daysOfMonth tracked today =
             Goal.Utils.monthToStr <| T.toMonth T.utc today
     in
     section
-        [ class "flex flex gap-1 transition-opacity opacity-20 group-hover:opacity-100" ]
+        [ class "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100" ]
     <|
         header [ class "font-bold" ] [ text monthName ]
             :: List.map (renderDay tracked) daysOfMonth

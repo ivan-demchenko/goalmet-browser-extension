@@ -30,6 +30,13 @@ type alias PortDataModel =
 port saveData : E.Value -> Cmd msg
 
 
+type Msg
+    = SetNewGoalsText String
+    | GotTime T.Posix
+    | AddGoal
+    | FromGoal String Goal.Msg
+
+
 main : Program E.Value Model Msg
 main =
     Browser.element
@@ -67,18 +74,25 @@ init savedGoalsJSON =
     ( model, timeCmd )
 
 
-type Msg
-    = SetNewGoalsText String
-    | GotTime T.Posix
-    | AddGoal
-    | FromGoal Goal.Msg
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        FromGoal _ ->
-            ( model, Cmd.none )
+        FromGoal id goalMsg ->
+            let
+                mapUpdate =
+                    \g ->
+                        if g.text == id then
+                            Goal.update goalMsg g
+
+                        else
+                            g
+
+                updatedGoals =
+                    List.map mapUpdate model.goals
+            in
+            ( { model | goals = updatedGoals }
+            , Cmd.batch [ saveData (Goal.goalsEncoder updatedGoals) ]
+            )
 
         GotTime now ->
             let
@@ -93,7 +107,7 @@ update msg model =
         AddGoal ->
             let
                 newGoal =
-                    Goal.Goal model.newGoalText Goal.Utils.mockedHistory
+                    Goal.Goal model.newGoalText []
 
                 goals =
                     newGoal :: model.goals
@@ -113,15 +127,18 @@ renderGoals model items =
             let
                 ctx =
                     Goal.Utils.GoalContext model.daysOfMonth model.now
+
+                render =
+                    \g -> Html.map (FromGoal (Goal.getGoalId g)) <| Goal.renderGoal ctx g
             in
             ul [ class "flex-1 flex flex-col" ] <|
-                List.map (Html.map FromGoal << Goal.renderGoal ctx) goals
+                List.map render goals
 
 
 view : Model -> Html Msg
 view model =
     div [ class "h-full flex flex-col" ]
-        [ header [ class "p-4 border bottom-1" ]
+        [ header [ class "p-4 mb-4 flex justify-center" ]
             [ input
                 [ class "w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none"
                 , onInput SetNewGoalsText

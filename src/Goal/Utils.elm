@@ -1,6 +1,5 @@
 module Goal.Utils exposing (..)
 
-import Derberos.Date.Core as DC
 import Time as T
 
 
@@ -8,14 +7,6 @@ type alias GoalContext =
     { daysOfMonth : List T.Posix
     , now : T.Posix
     }
-
-
-mockedHistory : List T.Posix
-mockedHistory =
-    [ DC.civilToPosix <| DC.newDateRecord 2024 9 13 0 0 0 0 T.utc
-    , DC.civilToPosix <| DC.newDateRecord 2024 9 10 0 0 0 0 T.utc
-    , DC.civilToPosix <| DC.newDateRecord 2024 9 20 0 0 0 0 T.utc
-    ]
 
 
 isDayTracked : T.Posix -> List T.Posix -> Bool
