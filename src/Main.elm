@@ -20,6 +20,7 @@ type alias Model =
     , now : T.Posix
     , daysOfMonth : List T.Posix
     , newGoalText : String
+    , canAddGoal : Bool
     }
 
 
@@ -69,6 +70,7 @@ init savedGoalsJSON =
             , newGoalText = ""
             , daysOfMonth = []
             , now = today
+            , canAddGoal = False
             }
     in
     ( model, timeCmd )
@@ -91,6 +93,11 @@ updateGoals goalMsg id goals =
                     g
     in
     List.map updateGoalFn goals
+
+
+isGoalExist : List Goal.Goal -> String -> Bool
+isGoalExist goals newGoalText =
+    List.any (\g -> g.text == newGoalText) goals
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -123,7 +130,12 @@ update msg model =
             ( { model | now = DU.resetTime now, daysOfMonth = daysOfMonth }, Cmd.none )
 
         SetNewGoalsText str ->
-            ( { model | newGoalText = str }, Cmd.none )
+            ( { model
+                | newGoalText = str
+                , canAddGoal = not <| String.isEmpty str || isGoalExist model.goals str
+              }
+            , Cmd.none
+            )
 
         AddGoal ->
             let
@@ -133,7 +145,11 @@ update msg model =
                 goals =
                     newGoal :: model.goals
             in
-            ( { model | newGoalText = "", goals = goals }
+            ( { model
+                | newGoalText = ""
+                , goals = goals
+                , canAddGoal = False
+              }
             , Cmd.batch [ saveData (Goal.goalsEncoder goals) ]
             )
 
@@ -169,7 +185,7 @@ view model =
             , button
                 [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300 disabled:bg-white"
                 , onClick AddGoal
-                , disabled (String.isEmpty model.newGoalText)
+                , disabled <| not model.canAddGoal
                 ]
                 [ text "Add a goal" ]
             ]
