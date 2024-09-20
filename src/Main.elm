@@ -7,7 +7,7 @@ import Derberos.Date.Utils as DU
 import Goal
 import Goal.Utils
 import Html exposing (Html, button, div, header, input, main_, section, text, ul)
-import Html.Attributes exposing (class, value)
+import Html.Attributes exposing (class, disabled, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
@@ -167,8 +167,9 @@ view model =
                 ]
                 []
             , button
-                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300"
+                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300 disabled:bg-white"
                 , onClick AddGoal
+                , disabled (String.isEmpty model.newGoalText)
                 ]
                 [ text "Add a goal" ]
             ]
