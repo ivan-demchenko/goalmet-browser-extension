@@ -74,25 +74,46 @@ init savedGoalsJSON =
     ( model, timeCmd )
 
 
+deleteGoal : String -> List Goal.Goal -> List Goal.Goal
+deleteGoal id goals =
+    List.filter (\g -> id /= Goal.getGoalId g) goals
+
+
+updateGoals : Goal.Msg -> String -> List Goal.Goal -> List Goal.Goal
+updateGoals goalMsg id goals =
+    let
+        updateGoalFn =
+            \g ->
+                if g.text == id then
+                    Goal.update goalMsg g
+
+                else
+                    g
+    in
+    List.map updateGoalFn goals
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         FromGoal id goalMsg ->
-            let
-                mapUpdate =
-                    \g ->
-                        if g.text == id then
-                            Goal.update goalMsg g
+            if Goal.isDeleteRequest goalMsg then
+                let
+                    updatedGoals =
+                        deleteGoal id model.goals
+                in
+                ( { model | goals = updatedGoals }
+                , Cmd.batch [ saveData (Goal.goalsEncoder updatedGoals) ]
+                )
 
-                        else
-                            g
-
-                updatedGoals =
-                    List.map mapUpdate model.goals
-            in
-            ( { model | goals = updatedGoals }
-            , Cmd.batch [ saveData (Goal.goalsEncoder updatedGoals) ]
-            )
+            else
+                let
+                    newGoals =
+                        updateGoals goalMsg id model.goals
+                in
+                ( { model | goals = newGoals }
+                , Cmd.batch [ saveData (Goal.goalsEncoder newGoals) ]
+                )
 
         GotTime now ->
             let
@@ -138,7 +159,7 @@ renderGoals model items =
 view : Model -> Html Msg
 view model =
     div [ class "h-full flex flex-col" ]
-        [ header [ class "p-4 mb-4 flex justify-center" ]
+        [ header [ class "p-4 mb-4 flex justify-center gap-1" ]
             [ input
                 [ class "w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none"
                 , onInput SetNewGoalsText
@@ -146,7 +167,7 @@ view model =
                 ]
                 []
             , button
-                [ class "px-4 py-1 rounded"
+                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300"
                 , onClick AddGoal
                 ]
                 [ text "Add a goal" ]

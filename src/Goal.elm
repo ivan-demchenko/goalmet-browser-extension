@@ -14,6 +14,7 @@ import Time
 
 type Msg
     = TrackGoal Time.Posix
+    | DeleteGoal
     | Noop
 
 
@@ -26,11 +27,24 @@ type alias Goal =
 update : Msg -> Goal -> Goal
 update msg goal =
     case msg of
+        DeleteGoal ->
+            goal
+
         Noop ->
             goal
 
         TrackGoal now ->
             { goal | daysTracked = now :: goal.daysTracked }
+
+
+isDeleteRequest : Msg -> Bool
+isDeleteRequest msg =
+    case msg of
+        DeleteGoal ->
+            True
+
+        _ ->
+            False
 
 
 goalsDecoder : D.Decoder (List Goal)
@@ -72,6 +86,7 @@ renderGoalHeader now goal =
         , aside [ class "flex gap-2 transition-opacity opacity-0 group-hover:opacity-100" ]
             [ button
                 [ class "text-xs text-gray-600 hover:text-red-500 w-4 h-4"
+                , onClick DeleteGoal
                 ]
                 [ deleteIcon ]
             , button
