@@ -1,9 +1,17 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, header, input, li, main_, section, text, ul)
+import Derberos.Date.Calendar as C
+import Derberos.Date.Core as DC
+import Derberos.Date.Utils as DU
+import Goal
+import GoalCalendar
+import Html exposing (Html, button, div, header, input, li, main_, section, span, text, ul)
 import Html.Attributes exposing (class, value)
 import Html.Events exposing (onClick, onInput)
+import Task
+import Time as T
+import Utils
 
 
 main : Program () Model Msg
@@ -18,42 +26,58 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { goals = [], newGoalText = "" }
-    , Cmd.none
-    )
+    let
+        timeCmd =
+            Task.perform GotTime T.now
+
+        today =
+            DC.civilToPosix <| DC.posixToCivil <| DU.resetTime <| T.millisToPosix 0
+
+        model =
+            { goals = []
+            , newGoalText = ""
+            , daysOfMonth = []
+            , now = today
+            }
+    in
+    ( model, timeCmd )
 
 
 type alias Model =
-    { goals : List Goal
+    { goals : List Goal.Goal
+    , now : T.Posix
+    , daysOfMonth : List T.Posix
     , newGoalText : String
-    }
-
-
-type alias Goal =
-    { text : String
-    , progress : Int
     }
 
 
 type Msg
     = SetNewGoalsText String
+    | GotTime T.Posix
     | AddGoal
+    | Noop
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetNewGoalsText str ->
+        Noop ->
+            ( model, Cmd.none )
+
+        GotTime now ->
             let
-                nm =
-                    { model | newGoalText = str }
+                daysOfMonth =
+                    List.map DU.resetTime (C.getCurrentMonthDates T.utc now)
             in
-            ( nm, Cmd.none )
+            ( { model | now = DU.resetTime now, daysOfMonth = daysOfMonth }, Cmd.none )
+
+        SetNewGoalsText str ->
+            ( { model | newGoalText = str }, Cmd.none )
 
         AddGoal ->
             let
                 ng =
-                    { text = model.newGoalText, progress = 0 }
+                    Goal.Goal model.newGoalText Utils.mockedHistory
 
                 nm =
                     { model | newGoalText = "", goals = ng :: model.goals }
@@ -61,24 +85,24 @@ update msg model =
             ( nm, Cmd.none )
 
 
-renderGoal : String -> Html msg
-renderGoal goalText =
+renderGoal : Model -> Goal.Goal -> Html Msg
+renderGoal model goal =
     li
-        [ class "font-thin text-4xl p-3 text-center hover:font-light" ]
-        [ text goalText ]
+        []
+        [ span [ class "font-thin text-4xl p-3 text-center hover:font-light" ] [ text goal.text ]
+        , Html.map (\_ -> Noop) <| GoalCalendar.view model.daysOfMonth goal.daysTracked model.now
+        ]
 
 
-renderGoals : List Goal -> Html msg
-renderGoals items =
+renderGoals : Model -> List Goal.Goal -> Html Msg
+renderGoals model items =
     case items of
         [] ->
             section [] [ text "Add your first goal" ]
 
         goals ->
             ul [ class "flex-1 flex flex-col" ] <|
-                List.map
-                    (\g -> renderGoal g.text)
-                    goals
+                List.map (renderGoal model) goals
 
 
 view : Model -> Html Msg
@@ -98,7 +122,7 @@ view model =
                 [ text "Add a goal" ]
             ]
         , main_
-            [ class "flex-1 flex items-center justify-center" ]
-            [ renderGoals model.goals
+            [ class "flex-1 flex flex-col items-center justify-center" ]
+            [ renderGoals model model.goals
             ]
         ]
