@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Derberos.Date.Calendar as C
@@ -9,11 +9,28 @@ import Goal.Utils
 import Html exposing (Html, button, div, header, input, main_, section, text, ul)
 import Html.Attributes exposing (class, value)
 import Html.Events exposing (onClick, onInput)
+import Json.Decode as D
+import Json.Encode as E
 import Task
 import Time as T
 
 
-main : Program () Model Msg
+type alias Model =
+    { goals : List Goal.Goal
+    , now : T.Posix
+    , daysOfMonth : List T.Posix
+    , newGoalText : String
+    }
+
+
+type alias PortDataModel =
+    { goals : List Goal.Goal }
+
+
+port saveData : E.Value -> Cmd msg
+
+
+main : Program E.Value Model Msg
 main =
     Browser.element
         { init = init
@@ -23,8 +40,8 @@ main =
         }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : E.Value -> ( Model, Cmd Msg )
+init savedGoalsJSON =
     let
         timeCmd =
             Task.perform GotTime T.now
@@ -32,22 +49,22 @@ init _ =
         today =
             DC.civilToPosix <| DC.posixToCivil <| DU.resetTime <| T.millisToPosix 0
 
+        recoveredGoals =
+            case D.decodeValue Goal.goalsDecoder savedGoalsJSON of
+                Ok goals ->
+                    goals
+
+                Err _ ->
+                    []
+
         model =
-            { goals = []
+            { goals = recoveredGoals
             , newGoalText = ""
             , daysOfMonth = []
             , now = today
             }
     in
     ( model, timeCmd )
-
-
-type alias Model =
-    { goals : List Goal.Goal
-    , now : T.Posix
-    , daysOfMonth : List T.Posix
-    , newGoalText : String
-    }
 
 
 type Msg
@@ -75,13 +92,15 @@ update msg model =
 
         AddGoal ->
             let
-                ng =
+                newGoal =
                     Goal.Goal model.newGoalText Goal.Utils.mockedHistory
 
-                nm =
-                    { model | newGoalText = "", goals = ng :: model.goals }
+                goals =
+                    newGoal :: model.goals
             in
-            ( nm, Cmd.none )
+            ( { model | newGoalText = "", goals = goals }
+            , Cmd.batch [ saveData (Goal.goalsEncoder goals) ]
+            )
 
 
 renderGoals : Model -> List Goal.Goal -> Html Msg
