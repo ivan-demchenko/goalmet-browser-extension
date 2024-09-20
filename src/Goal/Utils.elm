@@ -1,7 +1,13 @@
-module Utils exposing (..)
+module Goal.Utils exposing (..)
 
 import Derberos.Date.Core as DC
 import Time as T
+
+
+type alias GoalContext =
+    { daysOfMonth : List T.Posix
+    , now : T.Posix
+    }
 
 
 mockedHistory : List T.Posix

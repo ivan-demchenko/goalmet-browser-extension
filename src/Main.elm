@@ -5,13 +5,12 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import GoalCalendar
-import Html exposing (Html, button, div, header, input, li, main_, section, span, text, ul)
+import Goal.Utils
+import Html exposing (Html, button, div, header, input, main_, section, text, ul)
 import Html.Attributes exposing (class, value)
 import Html.Events exposing (onClick, onInput)
 import Task
 import Time as T
-import Utils
 
 
 main : Program () Model Msg
@@ -55,13 +54,13 @@ type Msg
     = SetNewGoalsText String
     | GotTime T.Posix
     | AddGoal
-    | Noop
+    | FromGoal Goal.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Noop ->
+        FromGoal _ ->
             ( model, Cmd.none )
 
         GotTime now ->
@@ -77,21 +76,12 @@ update msg model =
         AddGoal ->
             let
                 ng =
-                    Goal.Goal model.newGoalText Utils.mockedHistory
+                    Goal.Goal model.newGoalText Goal.Utils.mockedHistory
 
                 nm =
                     { model | newGoalText = "", goals = ng :: model.goals }
             in
             ( nm, Cmd.none )
-
-
-renderGoal : Model -> Goal.Goal -> Html Msg
-renderGoal model goal =
-    li
-        []
-        [ span [ class "font-thin text-4xl p-3 text-center hover:font-light" ] [ text goal.text ]
-        , Html.map (\_ -> Noop) <| GoalCalendar.view model.daysOfMonth goal.daysTracked model.now
-        ]
 
 
 renderGoals : Model -> List Goal.Goal -> Html Msg
@@ -101,8 +91,12 @@ renderGoals model items =
             section [] [ text "Add your first goal" ]
 
         goals ->
+            let
+                ctx =
+                    Goal.Utils.GoalContext model.daysOfMonth model.now
+            in
             ul [ class "flex-1 flex flex-col" ] <|
-                List.map (renderGoal model) goals
+                List.map (Html.map FromGoal << Goal.renderGoal ctx) goals
 
 
 view : Model -> Html Msg

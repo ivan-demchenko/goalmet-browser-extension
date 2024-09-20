@@ -1,9 +1,9 @@
-module GoalCalendar exposing (..)
+module Goal.Calendar exposing (view)
 
+import Goal.Utils
 import Html exposing (Html, div, header, section, text)
 import Html.Attributes exposing (class)
 import Time as T
-import Utils
 
 
 renderDay : List T.Posix -> T.Posix -> Html ()
@@ -13,7 +13,7 @@ renderDay trackedDays day =
             Debug.toString <| T.toDay T.utc day
 
         isTracked =
-            Utils.isDayTracked day trackedDays
+            Goal.Utils.isDayTracked day trackedDays
 
         colorClass =
             if isTracked then
@@ -31,10 +31,10 @@ view : List T.Posix -> List T.Posix -> T.Posix -> Html ()
 view daysOfMonth tracked today =
     let
         monthName =
-            Utils.monthToStr <| T.toMonth T.utc (Debug.log "Today" today)
+            Goal.Utils.monthToStr <| T.toMonth T.utc today
     in
     section
-        [ class "flex flex gap-1" ]
+        [ class "flex flex gap-1 transition-opacity opacity-20 group-hover:opacity-100" ]
     <|
         header [ class "font-bold" ] [ text monthName ]
-            :: List.map (renderDay tracked) (Debug.log "daysOfMonth" daysOfMonth)
+            :: List.map (renderDay tracked) daysOfMonth
