@@ -10,7 +10,7 @@ renderDay : List T.Posix -> T.Posix -> Html ()
 renderDay trackedDays day =
     let
         dayStr =
-            Debug.toString <| T.toDay T.utc day
+            String.fromInt << T.toDay T.utc <| day
 
         isTracked =
             Goal.Utils.isDayTracked day trackedDays

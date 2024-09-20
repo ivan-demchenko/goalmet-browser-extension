@@ -9,9 +9,17 @@ export default defineConfig(({ command }) => {
   if (command === 'build') {
     return {
       ...baseConfig,
+      define: {
+        __TARGET__: JSON.stringify('prod')
+      },
       base: '/dist/',
     };
   } else {
-    return baseConfig;
+    return {
+      ...baseConfig,
+      define: {
+        __TARGET__: JSON.stringify('dev')
+      },
+    }
   }
 })
