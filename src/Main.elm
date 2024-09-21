@@ -168,7 +168,7 @@ renderGoals model items =
                 render =
                     \g -> Html.map (FromGoal (Goal.getGoalId g)) <| Goal.renderGoal ctx g
             in
-            ul [ class "flex-1 flex flex-col" ] <|
+            ul [ class "flex-1 flex flex-col justify-center" ] <|
                 List.map render goals
 
 
@@ -183,7 +183,7 @@ view model =
                 ]
                 []
             , button
-                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300 disabled:bg-white"
+                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300 disabled:bg-white disabled:text-gray-400"
                 , onClick AddGoal
                 , disabled <| not model.canAddGoal
                 ]
