@@ -5,7 +5,6 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import Goal.Utils
 import Html exposing (Html, button, div, header, input, main_, section, text, ul)
 import Html.Attributes exposing (class, disabled, value)
 import Html.Events exposing (onClick, onInput)
@@ -163,7 +162,7 @@ renderGoals model items =
         goals ->
             let
                 ctx =
-                    Goal.Utils.GoalContext model.daysOfMonth model.now
+                    Goal.GoalContext model.daysOfMonth model.now
 
                 render =
                     \g -> Html.map (FromGoal (Goal.getGoalId g)) <| Goal.renderGoal ctx g

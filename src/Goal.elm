@@ -1,8 +1,6 @@
 module Goal exposing (..)
 
-import Goal.Calendar as GC
-import Goal.Utils
-import Html exposing (Html, button, div, li, span, text)
+import Html exposing (Html, button, div, header, li, section, span, text)
 import Html.Attributes exposing (class, title)
 import Html.Events exposing (onClick)
 import Json.Decode as D
@@ -13,16 +11,28 @@ import Time
 
 
 type Msg
-    = TrackGoal Time.Posix
+    = TrackGoal Time.Posix String
     | AskToDeleteGoal
     | DeleteGoal
     | Noop
 
 
+type alias TrackingRecord =
+    { time : Time.Posix
+    , notes : String
+    }
+
+
 type alias Goal =
     { text : String
     , confirmDelete : Bool
-    , daysTracked : List Time.Posix
+    , daysTracked : List TrackingRecord
+    }
+
+
+type alias GoalContext =
+    { daysOfMonth : List Time.Posix
+    , now : Time.Posix
     }
 
 
@@ -38,8 +48,8 @@ update msg goal =
         Noop ->
             goal
 
-        TrackGoal now ->
-            { goal | daysTracked = now :: goal.daysTracked }
+        TrackGoal now notes ->
+            { goal | daysTracked = TrackingRecord now notes :: goal.daysTracked }
 
 
 isDeleteRequest : Msg -> Bool
@@ -57,12 +67,19 @@ goalsDecoder =
     D.list goalDecoder
 
 
+trackingRecordDecoder : D.Decoder TrackingRecord
+trackingRecordDecoder =
+    D.map2 TrackingRecord
+        (D.field "time" <| D.map Time.millisToPosix D.int)
+        (D.field "notes" D.string)
+
+
 goalDecoder : D.Decoder Goal
 goalDecoder =
     D.map3 Goal
         (D.field "text" D.string)
         (D.succeed True)
-        (D.field "daysTracked" <| D.list <| D.map Time.millisToPosix D.int)
+        (D.field "daysTracked" (D.list trackingRecordDecoder))
 
 
 goalsEncoder : List Goal -> E.Value
@@ -70,11 +87,19 @@ goalsEncoder items =
     E.list goalEncoder items
 
 
+trackingRecordEncoder : TrackingRecord -> E.Value
+trackingRecordEncoder { time, notes } =
+    E.object
+        [ ( "time", E.int <| Time.posixToMillis time )
+        , ( "notes", E.string notes )
+        ]
+
+
 goalEncoder : Goal -> E.Value
 goalEncoder goal =
     E.object
         [ ( "text", E.string goal.text )
-        , ( "daysTracked", E.list E.int <| List.map Time.posixToMillis goal.daysTracked )
+        , ( "daysTracked", E.list trackingRecordEncoder goal.daysTracked )
         ]
 
 
@@ -83,13 +108,13 @@ getGoalId goal =
     goal.text
 
 
-renderGoalBody : Goal.Utils.GoalContext -> Goal -> Html Msg
+renderGoalBody : GoalContext -> Goal -> Html Msg
 renderGoalBody ctx goal =
     div [ class "flex-1 flex flex-col p-3 justify-between items-center" ]
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
-        , Html.map (\_ -> Noop) <| GC.view ctx.daysOfMonth goal.daysTracked ctx.now
+        , Html.map (\_ -> Noop) <| trackingCalendar ctx goal.daysTracked
         ]
 
 
@@ -108,12 +133,12 @@ renderTrackAction now =
     button
         [ class "flex justify-center bg-green-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
         , title "Track this goal for today"
-        , onClick (TrackGoal now)
+        , onClick (TrackGoal now "")
         ]
         [ plusIcon ]
 
 
-renderGoal : Goal.Utils.GoalContext -> Goal -> Html Msg
+renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
         [ class "flex hover:shadow-lg group transition-shadow hover:bg-slate-50" ]
@@ -121,6 +146,95 @@ renderGoal ctx goal =
         , renderGoalBody ctx goal
         , renderTrackAction ctx.now
         ]
+
+
+isDayTracked : Time.Posix -> List TrackingRecord -> Bool
+isDayTracked day =
+    let
+        isSameMonth =
+            \( d1, d2 ) -> Time.toMonth Time.utc d1 == Time.toMonth Time.utc d2
+
+        isSameDay =
+            \( d1, d2 ) -> Time.toDay Time.utc d1 == Time.toDay Time.utc d2
+
+        isMatch =
+            \( d1, d2 ) -> isSameMonth ( d1, d2 ) && isSameDay ( d1, d2 )
+    in
+    List.any (\rec -> isMatch ( day, rec.time ))
+
+
+renderCalendarDay : List TrackingRecord -> Time.Posix -> Html Msg
+renderCalendarDay trackedDays day =
+    let
+        dayStr =
+            String.fromInt << Time.toDay Time.utc <| day
+
+        isTracked =
+            isDayTracked day trackedDays
+
+        colorClass =
+            if isTracked then
+                "bg-green-300"
+
+            else
+                "bg-gray-200"
+    in
+    div
+        [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass) ]
+        [ text dayStr ]
+
+
+monthToStr : Time.Month -> String
+monthToStr month =
+    case month of
+        Time.Jan ->
+            "Jan"
+
+        Time.Feb ->
+            "Feb"
+
+        Time.Mar ->
+            "Mar"
+
+        Time.Apr ->
+            "Apr"
+
+        Time.May ->
+            "May"
+
+        Time.Jun ->
+            "Jun"
+
+        Time.Jul ->
+            "Jul"
+
+        Time.Aug ->
+            "Aug"
+
+        Time.Sep ->
+            "Sep"
+
+        Time.Oct ->
+            "Oct"
+
+        Time.Nov ->
+            "Nov"
+
+        Time.Dec ->
+            "Dec"
+
+
+trackingCalendar : GoalContext -> List TrackingRecord -> Html Msg
+trackingCalendar { daysOfMonth, now } records =
+    let
+        monthName =
+            monthToStr <| Time.toMonth Time.utc now
+    in
+    section
+        [ class "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100" ]
+    <|
+        header [ class "font-bold" ] [ text monthName ]
+            :: List.map (renderCalendarDay records) daysOfMonth
 
 
 plusIcon : Html Msg
