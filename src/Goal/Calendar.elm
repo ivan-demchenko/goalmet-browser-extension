@@ -17,7 +17,7 @@ renderDay trackedDays day =
 
         colorClass =
             if isTracked then
-                "bg-green-200"
+                "bg-green-300"
 
             else
                 "bg-gray-200"

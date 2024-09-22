@@ -140,7 +140,7 @@ update msg model =
         AddGoal ->
             let
                 newGoal =
-                    Goal.Goal model.newGoalText []
+                    Goal.Goal model.newGoalText False []
 
                 goals =
                     newGoal :: model.goals
@@ -158,7 +158,7 @@ renderGoals : Model -> List Goal.Goal -> Html Msg
 renderGoals model items =
     case items of
         [] ->
-            section [] [ text "Add your first goal" ]
+            section [ class "text-slate-700 text-3xl font-thin" ] [ text "Add your first goal" ]
 
         goals ->
             let

@@ -2,8 +2,8 @@ module Goal exposing (..)
 
 import Goal.Calendar as GC
 import Goal.Utils
-import Html exposing (Html, aside, button, div, li, span, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html, button, div, li, span, text)
+import Html.Attributes exposing (class, title)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
@@ -14,12 +14,14 @@ import Time
 
 type Msg
     = TrackGoal Time.Posix
+    | AskToDeleteGoal
     | DeleteGoal
     | Noop
 
 
 type alias Goal =
     { text : String
+    , confirmDelete : Bool
     , daysTracked : List Time.Posix
     }
 
@@ -27,6 +29,9 @@ type alias Goal =
 update : Msg -> Goal -> Goal
 update msg goal =
     case msg of
+        AskToDeleteGoal ->
+            { goal | confirmDelete = not goal.confirmDelete }
+
         DeleteGoal ->
             goal
 
@@ -54,8 +59,9 @@ goalsDecoder =
 
 goalDecoder : D.Decoder Goal
 goalDecoder =
-    D.map2 Goal
+    D.map3 Goal
         (D.field "text" D.string)
+        (D.succeed True)
         (D.field "daysTracked" <| D.list <| D.map Time.millisToPosix D.int)
 
 
@@ -77,33 +83,43 @@ getGoalId goal =
     goal.text
 
 
-renderGoalHeader : Time.Posix -> Goal -> Html Msg
-renderGoalHeader now goal =
-    div [ class "flex justify-between items-center" ]
+renderGoalBody : Goal.Utils.GoalContext -> Goal -> Html Msg
+renderGoalBody ctx goal =
+    div [ class "flex-1 flex flex-col p-3 justify-between items-center" ]
         [ span
-            [ class "font-thin text-4xl py-3 text-center" ]
+            [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
-        , aside [ class "flex gap-2 transition-opacity opacity-0 group-hover:opacity-100" ]
-            [ button
-                [ class "text-xs text-gray-600 hover:text-red-500 w-4 h-4"
-                , onClick DeleteGoal
-                ]
-                [ deleteIcon ]
-            , button
-                [ class "text-xs text-gray-600 hover:text-red-500 w-4 h-4"
-                , onClick (TrackGoal now)
-                ]
-                [ plusIcon ]
-            ]
+        , Html.map (\_ -> Noop) <| GC.view ctx.daysOfMonth goal.daysTracked ctx.now
         ]
 
 
+renderDeleteAction : Html Msg
+renderDeleteAction =
+    button
+        [ class "flex justify-center bg-pink-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
+        , title "Delete this goal"
+        , onClick DeleteGoal
+        ]
+        [ deleteIcon ]
+
+
+renderTrackAction : Time.Posix -> Html Msg
+renderTrackAction now =
+    button
+        [ class "flex justify-center bg-green-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
+        , title "Track this goal for today"
+        , onClick (TrackGoal now)
+        ]
+        [ plusIcon ]
+
+
 renderGoal : Goal.Utils.GoalContext -> Goal -> Html Msg
-renderGoal { daysOfMonth, now } goal =
+renderGoal ctx goal =
     li
-        [ class "flex flex-col p-3 hover:shadow-lg group transition-shadow" ]
-        [ renderGoalHeader now goal
-        , Html.map (\_ -> Noop) <| GC.view daysOfMonth goal.daysTracked now
+        [ class "flex hover:shadow-lg group transition-shadow hover:bg-slate-50" ]
+        [ renderDeleteAction
+        , renderGoalBody ctx goal
+        , renderTrackAction ctx.now
         ]
 
 
@@ -150,7 +166,6 @@ deleteIcon =
         [ SvgAttr.width "24px"
         , SvgAttr.height "24px"
         , SvgAttr.viewBox "0 0 24 24"
-        , SvgAttr.fill "none"
         ]
         [ Svg.g
             [ SvgAttr.id "SVGRepo_bgCarrier"
