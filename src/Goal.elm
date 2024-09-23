@@ -36,7 +36,7 @@ type alias GoalContext =
 type alias UIModel =
     { showDeleteDialog : Bool
     , showTrackingDialog : Bool
-    , daysNotes : Maybe (List TrackingRecord)
+    , notesOfDay : Maybe Time.Posix
     , noteText : String
     }
 
@@ -58,6 +58,20 @@ newGoal newGoalText =
     Goal newGoalText [] initUIModel
 
 
+shouldUiStayOpen : Goal -> Bool
+shouldUiStayOpen goal =
+    let
+        showNotes =
+            case goal.ui.notesOfDay of
+                Just _ ->
+                    True
+
+                _ ->
+                    False
+    in
+    goal.ui.showDeleteDialog || goal.ui.showTrackingDialog || showNotes
+
+
 update : Msg -> Goal -> Goal
 update msg goal =
     case msg of
@@ -76,14 +90,23 @@ update msg goal =
                 oldUI =
                     goal.ui
 
-                notes =
-                    List.filter (\d -> isSameDay day d.time) goal.daysTracked
+                dayToView =
+                    case oldUI.notesOfDay of
+                        Just openedDay ->
+                            if isSameDay openedDay day then
+                                Nothing
+
+                            else
+                                Just day
+
+                        _ ->
+                            Just day
 
                 newUI =
                     { oldUI
                         | showDeleteDialog = False
                         , showTrackingDialog = False
-                        , daysNotes = Just notes
+                        , notesOfDay = dayToView
                     }
             in
             { goal | ui = newUI }
@@ -100,7 +123,7 @@ update msg goal =
                     { oldUI
                         | showDeleteDialog = True
                         , showTrackingDialog = False
-                        , daysNotes = Nothing
+                        , notesOfDay = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -124,7 +147,7 @@ update msg goal =
                     { oldUI
                         | showTrackingDialog = True
                         , showDeleteDialog = False
-                        , daysNotes = Nothing
+                        , notesOfDay = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -211,6 +234,16 @@ getGoalId goal =
 
 renderGoalBody : GoalContext -> Goal -> Html Msg
 renderGoalBody ctx goal =
+    let
+        notesView =
+            case goal.ui.notesOfDay of
+                Just day ->
+                    renderListOfComments day <|
+                        List.filter (\d -> isSameDay day d.time) goal.daysTracked
+
+                Nothing ->
+                    div [] []
+    in
     div [ class "flex-1 flex flex-col p-3 justify-between items-center" ]
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
@@ -218,9 +251,7 @@ renderGoalBody ctx goal =
         , trackingCalendar ctx goal
         , renderTrackingDialog ctx.now goal
         , renderDeletionDialog goal
-        , goal.ui.daysNotes
-            |> Maybe.withDefault []
-            |> renderListOfComments
+        , notesView
         ]
 
 
@@ -306,15 +337,36 @@ renderDeletionDialog goal =
         ]
 
 
-renderListOfComments : List TrackingRecord -> Html Msg
-renderListOfComments records =
+formatDateFull : Time.Posix -> String
+formatDateFull t =
+    let
+        day =
+            Time.toDay Time.utc t |> String.fromInt
+
+        month =
+            Time.toMonth Time.utc t |> monthToStr
+    in
+    day ++ ". " ++ month
+
+
+renderListOfComments : Time.Posix -> List TrackingRecord -> Html Msg
+renderListOfComments day records =
     let
         commentView =
-            \day -> li [ class "p-1" ] [ text day.note ]
+            \{ note } -> li [ class "p-1" ] [ text note ]
     in
-    ul
-        [ class "divide-solid divide-y" ]
-        (List.map commentView records)
+    section []
+        [ div []
+            [ text <| formatDateFull day ]
+        , ul
+            [ class "divide-solid divide-y" ]
+            (if List.isEmpty records then
+                [ text "No comments for this day" ]
+
+             else
+                List.map commentView records
+            )
+        ]
 
 
 renderGoal : GoalContext -> Goal -> Html Msg
@@ -322,7 +374,7 @@ renderGoal ctx goal =
     li
         [ classList
             [ ( "flex hover:shadow-lg group transition-shadow hover:bg-slate-50", True )
-            , ( "shadow-lg bg-slate-50", goal.ui.showDeleteDialog || goal.ui.showTrackingDialog )
+            , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal )
             ]
         ]
         [ renderDeleteAction goal
@@ -364,7 +416,7 @@ renderCalendarDay trackedDays day =
             else
                 "bg-gray-200"
     in
-    div
+    button
         [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass)
         , onClick (ToggleDaysNotes day)
         ]
@@ -420,12 +472,12 @@ trackingCalendar { daysOfMonth, now } goal =
     section
         [ classList
             [ ( "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "opacity-100", goal.ui.showDeleteDialog || goal.ui.showTrackingDialog )
+            , ( "opacity-100", shouldUiStayOpen goal )
             ]
         ]
-    <|
-        header [ class "font-bold" ] [ text monthName ]
+        (header [ class "font-bold" ] [ text monthName ]
             :: List.map (renderCalendarDay goal.daysTracked) daysOfMonth
+        )
 
 
 plusIcon : Html Msg
