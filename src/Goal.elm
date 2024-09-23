@@ -1,7 +1,7 @@
 module Goal exposing (..)
 
-import Html exposing (Html, button, div, header, li, section, span, text)
-import Html.Attributes exposing (class, title)
+import Html exposing (Html, button, div, header, li, section, span, text, textarea)
+import Html.Attributes exposing (class, classList, title)
 import Html.Events exposing (onClick)
 import Json.Decode as D
 import Json.Encode as E
@@ -11,7 +11,9 @@ import Time
 
 
 type Msg
-    = TrackGoal Time.Posix String
+    = StartTracking
+    | TrackGoal Time.Posix String
+    | CancelTracking
     | AskToDeleteGoal
     | DeleteGoal
     | Noop
@@ -23,16 +25,17 @@ type alias TrackingRecord =
     }
 
 
-type alias Goal =
-    { text : String
-    , confirmDelete : Bool
-    , daysTracked : List TrackingRecord
-    }
-
-
 type alias GoalContext =
     { daysOfMonth : List Time.Posix
     , now : Time.Posix
+    }
+
+
+type alias Goal =
+    { text : String
+    , confirmDelete : Bool
+    , confirmTracking : Bool
+    , daysTracked : List TrackingRecord
     }
 
 
@@ -47,6 +50,12 @@ update msg goal =
 
         Noop ->
             goal
+
+        StartTracking ->
+            { goal | confirmTracking = True }
+
+        CancelTracking ->
+            { goal | confirmTracking = False }
 
         TrackGoal now notes ->
             { goal | daysTracked = TrackingRecord now notes :: goal.daysTracked }
@@ -76,9 +85,10 @@ trackingRecordDecoder =
 
 goalDecoder : D.Decoder Goal
 goalDecoder =
-    D.map3 Goal
+    D.map4 Goal
         (D.field "text" D.string)
-        (D.succeed True)
+        (D.succeed False)
+        (D.succeed False)
         (D.field "daysTracked" (D.list trackingRecordDecoder))
 
 
@@ -115,6 +125,7 @@ renderGoalBody ctx goal =
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
         , Html.map (\_ -> Noop) <| trackingCalendar ctx goal.daysTracked
+        , renderNotesDialog ctx.now goal
         ]
 
 
@@ -128,14 +139,42 @@ renderDeleteAction =
         [ deleteIcon ]
 
 
-renderTrackAction : Time.Posix -> Html Msg
-renderTrackAction now =
+renderTrackAction : Html Msg
+renderTrackAction =
     button
         [ class "flex justify-center bg-green-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
         , title "Track this goal for today"
-        , onClick (TrackGoal now "")
+        , onClick StartTracking
         ]
         [ plusIcon ]
+
+
+renderNotesDialog : Time.Posix -> Goal -> Html Msg
+renderNotesDialog now goal =
+    div
+        [ classList
+            [ ( "flex flex-col", True )
+            , ( "block", goal.confirmTracking )
+            , ( "hidden", not goal.confirmTracking )
+            ]
+        ]
+        [ span [] [ text "Would you like to leave a comment?" ]
+        , textarea
+            [ class "border border-gray-200 mb-1" ]
+            []
+        , div [ class "text-center" ]
+            [ button
+                [ onClick (TrackGoal now "")
+                , class "px-2 py bg-green-100 rounded mr-1"
+                ]
+                [ text "Commit" ]
+            , button
+                [ onClick CancelTracking
+                , class "px-2 py bg-pink-100 rounded"
+                ]
+                [ text "Cancel" ]
+            ]
+        ]
 
 
 renderGoal : GoalContext -> Goal -> Html Msg
@@ -144,7 +183,7 @@ renderGoal ctx goal =
         [ class "flex hover:shadow-lg group transition-shadow hover:bg-slate-50" ]
         [ renderDeleteAction
         , renderGoalBody ctx goal
-        , renderTrackAction ctx.now
+        , renderTrackAction
         ]
 
 
