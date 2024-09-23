@@ -255,9 +255,9 @@ renderTrackingDialog now goal =
             , ( "hidden", not goal.ui.showTrackingDialog )
             ]
         ]
-        [ span [] [ text "Would you like to leave a comment?" ]
+        [ span [] [ text <| "Record the " ++ formatDateFull now ++ ". Any comments?" ]
         , textarea
-            [ class "border border-gray-200 mb-1"
+            [ class "border border-gray-200 mb-1 w-full"
             , value goal.ui.noteText
             , onInput (\s -> Ui <| SetTrackingNoteText s)
             ]
