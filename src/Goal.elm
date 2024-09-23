@@ -251,8 +251,7 @@ renderTrackingDialog : Time.Posix -> Goal -> Html Msg
 renderTrackingDialog now goal =
     div
         [ classList
-            [ ( "flex flex-col absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
-            , ( "block", goal.ui.showTrackingDialog )
+            [ ( "flex flex-col justify-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "hidden", not goal.ui.showTrackingDialog )
             ]
         ]
@@ -283,7 +282,6 @@ renderDeletionDialog goal =
     div
         [ classList
             [ ( "flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
-            , ( "block", goal.ui.showDeleteDialog )
             , ( "hidden", not goal.ui.showDeleteDialog )
             ]
         ]
@@ -321,13 +319,13 @@ renderListOfComments day records =
         commentView =
             \{ note } -> li [ class "p-1" ] [ text note ]
     in
-    section []
+    section [ class "w-2/3 text-center mt-2" ]
         [ div []
             [ text <| formatDateFull day ]
         , ul
             [ class "divide-solid divide-y" ]
             (if List.isEmpty records then
-                [ text "No comments for this day" ]
+                [ li [ class "p-1" ] [ text "No comments for this day" ] ]
 
              else
                 List.map commentView records
@@ -339,7 +337,7 @@ renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
         [ classList
-            [ ( "border-box flex hover:shadow-lg group transition-shadow hover:bg-slate-50 relative", True )
+            [ ( "mb-1 flex hover:shadow-lg group transition-shadow hover:bg-slate-50 relative", True )
             , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal.ui )
             ]
         ]
@@ -439,7 +437,7 @@ trackingCalendar { daysOfMonth, now } goal =
     in
     section
         [ classList
-            [ ( "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
+            [ ( "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
             , ( "opacity-100", shouldUiStayOpen goal.ui )
             ]
         ]
