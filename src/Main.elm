@@ -138,11 +138,8 @@ update msg model =
 
         AddGoal ->
             let
-                newGoal =
-                    Goal.Goal model.newGoalText False False []
-
                 goals =
-                    newGoal :: model.goals
+                    Goal.newGoal model.newGoalText :: model.goals
             in
             ( { model
                 | newGoalText = ""

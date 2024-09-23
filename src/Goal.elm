@@ -11,12 +11,12 @@ import Time
 
 
 type Msg
-    = StartTracking
-    | TrackGoal Time.Posix String
+    = ShowTrackingModal
+    | CommitGoalTracking Time.Posix String
     | CancelTracking
-    | AskToDeleteGoal
+    | ShowDeleteModal
     | DeleteGoal
-    | Noop
+    | CancelDeletion
 
 
 type alias TrackingRecord =
@@ -31,34 +31,94 @@ type alias GoalContext =
     }
 
 
+type alias UIModel =
+    { showDeleteDialog : Bool
+    , showTrackingDialog : Bool
+    , newCommentText : String
+    }
+
+
 type alias Goal =
     { text : String
-    , confirmDelete : Bool
-    , confirmTracking : Bool
     , daysTracked : List TrackingRecord
+    , ui : UIModel
     }
+
+
+initUIModel : UIModel
+initUIModel =
+    UIModel False False ""
+
+
+newGoal : String -> Goal
+newGoal newGoalText =
+    Goal newGoalText [] initUIModel
 
 
 update : Msg -> Goal -> Goal
 update msg goal =
     case msg of
-        AskToDeleteGoal ->
-            { goal | confirmDelete = not goal.confirmDelete }
-
         DeleteGoal ->
             goal
 
-        Noop ->
-            goal
+        ShowDeleteModal ->
+            let
+                oldUI =
+                    goal.ui
 
-        StartTracking ->
-            { goal | confirmTracking = True }
+                newUI =
+                    { oldUI
+                        | showDeleteDialog = True
+                        , showTrackingDialog = False
+                    }
+            in
+            { goal | ui = newUI }
+
+        CancelDeletion ->
+            let
+                oldUI =
+                    goal.ui
+
+                newUI =
+                    { oldUI | showDeleteDialog = False }
+            in
+            { goal | ui = newUI }
+
+        ShowTrackingModal ->
+            let
+                oldUI =
+                    goal.ui
+
+                newUI =
+                    { oldUI
+                        | showTrackingDialog = True
+                        , showDeleteDialog = False
+                    }
+            in
+            { goal | ui = newUI }
 
         CancelTracking ->
-            { goal | confirmTracking = False }
+            let
+                oldUI =
+                    goal.ui
 
-        TrackGoal now notes ->
-            { goal | daysTracked = TrackingRecord now notes :: goal.daysTracked }
+                newUI =
+                    { oldUI | showTrackingDialog = False }
+            in
+            { goal | ui = newUI }
+
+        CommitGoalTracking now notes ->
+            let
+                oldUI =
+                    goal.ui
+
+                newUI =
+                    { oldUI | showTrackingDialog = False }
+            in
+            { goal
+                | daysTracked = TrackingRecord now notes :: goal.daysTracked
+                , ui = newUI
+            }
 
 
 isDeleteRequest : Msg -> Bool
@@ -85,11 +145,10 @@ trackingRecordDecoder =
 
 goalDecoder : D.Decoder Goal
 goalDecoder =
-    D.map4 Goal
+    D.map3 Goal
         (D.field "text" D.string)
-        (D.succeed False)
-        (D.succeed False)
         (D.field "daysTracked" (D.list trackingRecordDecoder))
+        (D.succeed initUIModel)
 
 
 goalsEncoder : List Goal -> E.Value
@@ -124,38 +183,45 @@ renderGoalBody ctx goal =
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
-        , Html.map (\_ -> Noop) <| trackingCalendar ctx goal.daysTracked
-        , renderNotesDialog ctx.now goal
+        , trackingCalendar ctx goal.daysTracked
+        , renderTrackingDialog ctx.now goal
+        , renderDeletionDialog goal
         ]
 
 
-renderDeleteAction : Html Msg
-renderDeleteAction =
+renderDeleteAction : Goal -> Html Msg
+renderDeleteAction goal =
     button
-        [ class "flex justify-center bg-pink-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
+        [ classList
+            [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
+            , ( "bg-red-100", goal.ui.showDeleteDialog )
+            ]
         , title "Delete this goal"
-        , onClick DeleteGoal
+        , onClick ShowDeleteModal
         ]
         [ deleteIcon ]
 
 
-renderTrackAction : Html Msg
-renderTrackAction =
+renderTrackAction : Goal -> Html Msg
+renderTrackAction goal =
     button
-        [ class "flex justify-center bg-green-100 hover:animate-pulse w-16 items-center transition-opacity opacity-0 group-hover:opacity-100"
+        [ classList
+            [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
+            , ( "bg-green-100", goal.ui.showTrackingDialog )
+            ]
         , title "Track this goal for today"
-        , onClick StartTracking
+        , onClick ShowTrackingModal
         ]
         [ plusIcon ]
 
 
-renderNotesDialog : Time.Posix -> Goal -> Html Msg
-renderNotesDialog now goal =
+renderTrackingDialog : Time.Posix -> Goal -> Html Msg
+renderTrackingDialog now goal =
     div
         [ classList
             [ ( "flex flex-col", True )
-            , ( "block", goal.confirmTracking )
-            , ( "hidden", not goal.confirmTracking )
+            , ( "block", goal.ui.showTrackingDialog )
+            , ( "hidden", not goal.ui.showTrackingDialog )
             ]
         ]
         [ span [] [ text "Would you like to leave a comment?" ]
@@ -164,7 +230,7 @@ renderNotesDialog now goal =
             []
         , div [ class "text-center" ]
             [ button
-                [ onClick (TrackGoal now "")
+                [ onClick (CommitGoalTracking now "")
                 , class "px-2 py bg-green-100 rounded mr-1"
                 ]
                 [ text "Commit" ]
@@ -177,13 +243,38 @@ renderNotesDialog now goal =
         ]
 
 
+renderDeletionDialog : Goal -> Html Msg
+renderDeletionDialog goal =
+    div
+        [ classList
+            [ ( "flex flex-col", True )
+            , ( "block", goal.ui.showDeleteDialog )
+            , ( "hidden", not goal.ui.showDeleteDialog )
+            ]
+        ]
+        [ span [] [ text "Are you sure you want to delete it?" ]
+        , div [ class "text-center" ]
+            [ button
+                [ onClick DeleteGoal
+                , class "px-2 py bg-red-100 rounded mr-1"
+                ]
+                [ text "Delete" ]
+            , button
+                [ onClick CancelDeletion
+                , class "px-2 py bg-gray-100 rounded"
+                ]
+                [ text "Cancel" ]
+            ]
+        ]
+
+
 renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
         [ class "flex hover:shadow-lg group transition-shadow hover:bg-slate-50" ]
-        [ renderDeleteAction
+        [ renderDeleteAction goal
         , renderGoalBody ctx goal
-        , renderTrackAction
+        , renderTrackAction goal
         ]
 
 
