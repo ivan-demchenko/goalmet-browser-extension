@@ -10,15 +10,19 @@ import Svg.Attributes as SvgAttr
 import Time
 
 
-type Msg
+type UiMsg
     = ShowTrackingModal
-    | CommitGoalTracking Time.Posix
     | CancelTracking
     | ShowDeleteModal
-    | DeleteGoal
     | CancelDeletion
     | ToggleDaysNotes Time.Posix
     | SetTrackingNoteText String
+
+
+type Msg
+    = CommitGoalTracking Time.Posix
+    | DeleteGoal
+    | Ui UiMsg
 
 
 type alias TrackingRecord =
@@ -33,7 +37,7 @@ type alias GoalContext =
     }
 
 
-type alias UIModel =
+type alias UiModel =
     { showDeleteDialog : Bool
     , showTrackingDialog : Bool
     , notesOfDay : Maybe Time.Posix
@@ -44,13 +48,13 @@ type alias UIModel =
 type alias Goal =
     { text : String
     , daysTracked : List TrackingRecord
-    , ui : UIModel
+    , ui : UiModel
     }
 
 
-initUIModel : UIModel
+initUIModel : UiModel
 initUIModel =
-    UIModel False False Nothing ""
+    UiModel False False Nothing ""
 
 
 newGoal : String -> Goal
@@ -58,40 +62,30 @@ newGoal newGoalText =
     Goal newGoalText [] initUIModel
 
 
-shouldUiStayOpen : Goal -> Bool
-shouldUiStayOpen goal =
+shouldUiStayOpen : UiModel -> Bool
+shouldUiStayOpen ui =
     let
         showNotes =
-            case goal.ui.notesOfDay of
+            case ui.notesOfDay of
                 Just _ ->
                     True
 
                 _ ->
                     False
     in
-    goal.ui.showDeleteDialog || goal.ui.showTrackingDialog || showNotes
+    ui.showDeleteDialog || ui.showTrackingDialog || showNotes
 
 
-update : Msg -> Goal -> Goal
-update msg goal =
-    case msg of
+updateUi : UiMsg -> UiModel -> UiModel
+updateUi uiMsg uiModel =
+    case uiMsg of
         SetTrackingNoteText str ->
-            let
-                oldUI =
-                    goal.ui
-
-                newUI =
-                    { oldUI | noteText = str }
-            in
-            { goal | ui = newUI }
+            { uiModel | noteText = str }
 
         ToggleDaysNotes day ->
             let
-                oldUI =
-                    goal.ui
-
                 dayToView =
-                    case oldUI.notesOfDay of
+                    case uiModel.notesOfDay of
                         Just openedDay ->
                             if isSameDay openedDay day then
                                 Nothing
@@ -101,64 +95,40 @@ update msg goal =
 
                         _ ->
                             Just day
-
-                newUI =
-                    { oldUI
-                        | showDeleteDialog = False
-                        , showTrackingDialog = False
-                        , notesOfDay = dayToView
-                    }
             in
-            { goal | ui = newUI }
+            { uiModel
+                | showDeleteDialog = False
+                , showTrackingDialog = False
+                , notesOfDay = dayToView
+            }
+
+        ShowDeleteModal ->
+            { uiModel
+                | showDeleteDialog = True
+                , showTrackingDialog = False
+            }
+
+        CancelDeletion ->
+            { uiModel | showDeleteDialog = False }
+
+        ShowTrackingModal ->
+            { uiModel
+                | showTrackingDialog = True
+                , showDeleteDialog = False
+            }
+
+        CancelTracking ->
+            { uiModel | showTrackingDialog = False }
+
+
+update : Msg -> Goal -> Goal
+update msg goal =
+    case msg of
+        Ui uiMsg ->
+            { goal | ui = updateUi uiMsg goal.ui }
 
         DeleteGoal ->
             goal
-
-        ShowDeleteModal ->
-            let
-                oldUI =
-                    goal.ui
-
-                newUI =
-                    { oldUI
-                        | showDeleteDialog = True
-                        , showTrackingDialog = False
-                    }
-            in
-            { goal | ui = newUI }
-
-        CancelDeletion ->
-            let
-                oldUI =
-                    goal.ui
-
-                newUI =
-                    { oldUI | showDeleteDialog = False }
-            in
-            { goal | ui = newUI }
-
-        ShowTrackingModal ->
-            let
-                oldUI =
-                    goal.ui
-
-                newUI =
-                    { oldUI
-                        | showTrackingDialog = True
-                        , showDeleteDialog = False
-                    }
-            in
-            { goal | ui = newUI }
-
-        CancelTracking ->
-            let
-                oldUI =
-                    goal.ui
-
-                newUI =
-                    { oldUI | showTrackingDialog = False }
-            in
-            { goal | ui = newUI }
 
         CommitGoalTracking now ->
             let
@@ -259,7 +229,7 @@ renderDeleteAction goal =
             , ( "bg-red-100 animate-pulse", goal.ui.showDeleteDialog )
             ]
         , title "Delete this goal"
-        , onClick ShowDeleteModal
+        , onClick <| Ui ShowDeleteModal
         ]
         [ deleteIcon ]
 
@@ -272,7 +242,7 @@ renderTrackAction goal =
             , ( "bg-green-100 animate-pulse", goal.ui.showTrackingDialog )
             ]
         , title "Track this goal for today"
-        , onClick ShowTrackingModal
+        , onClick <| Ui ShowTrackingModal
         ]
         [ plusIcon ]
 
@@ -290,7 +260,7 @@ renderTrackingDialog now goal =
         , textarea
             [ class "border border-gray-200 mb-1"
             , value goal.ui.noteText
-            , onInput SetTrackingNoteText
+            , onInput (\s -> Ui <| SetTrackingNoteText s)
             ]
             []
         , div [ class "text-center" ]
@@ -300,7 +270,7 @@ renderTrackingDialog now goal =
                 ]
                 [ text "Commit" ]
             , button
-                [ onClick CancelTracking
+                [ onClick <| Ui CancelTracking
                 , class "px-2 py bg-gray-100 rounded"
                 ]
                 [ text "Cancel" ]
@@ -325,7 +295,7 @@ renderDeletionDialog goal =
                 ]
                 [ text "Delete" ]
             , button
-                [ onClick CancelDeletion
+                [ onClick <| Ui CancelDeletion
                 , class "px-2 py bg-gray-100 rounded"
                 ]
                 [ text "Cancel" ]
@@ -370,7 +340,7 @@ renderGoal ctx goal =
     li
         [ classList
             [ ( "border-box flex hover:shadow-lg group transition-shadow hover:bg-slate-50 relative", True )
-            , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal )
+            , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal.ui )
             ]
         ]
         [ renderDeleteAction goal
@@ -416,7 +386,7 @@ renderCalendarDay trackedDays day =
     in
     button
         [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass)
-        , onClick (ToggleDaysNotes day)
+        , onClick <| Ui (ToggleDaysNotes day)
         ]
         [ text dayStr ]
 
@@ -470,7 +440,7 @@ trackingCalendar { daysOfMonth, now } goal =
     section
         [ classList
             [ ( "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "opacity-100", shouldUiStayOpen goal )
+            , ( "opacity-100", shouldUiStayOpen goal.ui )
             ]
         ]
         (header [ class "font-bold" ] [ text monthName ]
