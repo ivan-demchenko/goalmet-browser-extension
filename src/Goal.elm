@@ -1,8 +1,8 @@
 module Goal exposing (..)
 
-import Html exposing (Html, button, div, header, li, section, span, text, textarea)
-import Html.Attributes exposing (class, classList, title)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, header, li, section, span, text, textarea, ul)
+import Html.Attributes exposing (class, classList, title, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
 import Svg exposing (path, svg)
@@ -12,16 +12,18 @@ import Time
 
 type Msg
     = ShowTrackingModal
-    | CommitGoalTracking Time.Posix String
+    | CommitGoalTracking Time.Posix
     | CancelTracking
     | ShowDeleteModal
     | DeleteGoal
     | CancelDeletion
+    | ToggleDaysNotes Time.Posix
+    | SetTrackingNoteText String
 
 
 type alias TrackingRecord =
     { time : Time.Posix
-    , notes : String
+    , note : String
     }
 
 
@@ -34,7 +36,8 @@ type alias GoalContext =
 type alias UIModel =
     { showDeleteDialog : Bool
     , showTrackingDialog : Bool
-    , newCommentText : String
+    , daysNotes : Maybe (List TrackingRecord)
+    , noteText : String
     }
 
 
@@ -47,7 +50,7 @@ type alias Goal =
 
 initUIModel : UIModel
 initUIModel =
-    UIModel False False ""
+    UIModel False False Nothing ""
 
 
 newGoal : String -> Goal
@@ -58,6 +61,33 @@ newGoal newGoalText =
 update : Msg -> Goal -> Goal
 update msg goal =
     case msg of
+        SetTrackingNoteText str ->
+            let
+                oldUI =
+                    goal.ui
+
+                newUI =
+                    { oldUI | noteText = str }
+            in
+            { goal | ui = newUI }
+
+        ToggleDaysNotes day ->
+            let
+                oldUI =
+                    goal.ui
+
+                notes =
+                    List.filter (\d -> isSameDay day d.time) goal.daysTracked
+
+                newUI =
+                    { oldUI
+                        | showDeleteDialog = False
+                        , showTrackingDialog = False
+                        , daysNotes = Just notes
+                    }
+            in
+            { goal | ui = newUI }
+
         DeleteGoal ->
             goal
 
@@ -70,6 +100,7 @@ update msg goal =
                     { oldUI
                         | showDeleteDialog = True
                         , showTrackingDialog = False
+                        , daysNotes = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -93,6 +124,7 @@ update msg goal =
                     { oldUI
                         | showTrackingDialog = True
                         , showDeleteDialog = False
+                        , daysNotes = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -107,16 +139,16 @@ update msg goal =
             in
             { goal | ui = newUI }
 
-        CommitGoalTracking now notes ->
+        CommitGoalTracking now ->
             let
                 oldUI =
                     goal.ui
 
                 newUI =
-                    { oldUI | showTrackingDialog = False }
+                    { oldUI | showTrackingDialog = False, noteText = "" }
             in
             { goal
-                | daysTracked = TrackingRecord now notes :: goal.daysTracked
+                | daysTracked = TrackingRecord now goal.ui.noteText :: goal.daysTracked
                 , ui = newUI
             }
 
@@ -157,10 +189,10 @@ goalsEncoder items =
 
 
 trackingRecordEncoder : TrackingRecord -> E.Value
-trackingRecordEncoder { time, notes } =
+trackingRecordEncoder { time, note } =
     E.object
         [ ( "time", E.int <| Time.posixToMillis time )
-        , ( "notes", E.string notes )
+        , ( "notes", E.string note )
         ]
 
 
@@ -186,6 +218,9 @@ renderGoalBody ctx goal =
         , trackingCalendar ctx goal
         , renderTrackingDialog ctx.now goal
         , renderDeletionDialog goal
+        , goal.ui.daysNotes
+            |> Maybe.withDefault []
+            |> renderListOfComments
         ]
 
 
@@ -226,11 +261,14 @@ renderTrackingDialog now goal =
         ]
         [ span [] [ text "Would you like to leave a comment?" ]
         , textarea
-            [ class "border border-gray-200 mb-1" ]
+            [ class "border border-gray-200 mb-1"
+            , value goal.ui.noteText
+            , onInput SetTrackingNoteText
+            ]
             []
         , div [ class "text-center" ]
             [ button
-                [ onClick (CommitGoalTracking now "")
+                [ onClick (CommitGoalTracking now)
                 , class "px-2 py bg-green-100 rounded mr-1"
                 ]
                 [ text "Commit" ]
@@ -268,6 +306,17 @@ renderDeletionDialog goal =
         ]
 
 
+renderListOfComments : List TrackingRecord -> Html Msg
+renderListOfComments records =
+    let
+        commentView =
+            \day -> li [ class "p-1" ] [ text day.note ]
+    in
+    ul
+        [ class "divide-solid divide-y" ]
+        (List.map commentView records)
+
+
 renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
@@ -282,19 +331,21 @@ renderGoal ctx goal =
         ]
 
 
-isDayTracked : Time.Posix -> List TrackingRecord -> Bool
-isDayTracked day =
+isSameDay : Time.Posix -> Time.Posix -> Bool
+isSameDay t1 t2 =
     let
-        isSameMonth =
+        isMatchingMonths =
             \( d1, d2 ) -> Time.toMonth Time.utc d1 == Time.toMonth Time.utc d2
 
-        isSameDay =
+        isMatchingDays =
             \( d1, d2 ) -> Time.toDay Time.utc d1 == Time.toDay Time.utc d2
-
-        isMatch =
-            \( d1, d2 ) -> isSameMonth ( d1, d2 ) && isSameDay ( d1, d2 )
     in
-    List.any (\rec -> isMatch ( day, rec.time ))
+    isMatchingMonths ( t1, t2 ) && isMatchingDays ( t1, t2 )
+
+
+isDayTracked : Time.Posix -> List TrackingRecord -> Bool
+isDayTracked day =
+    List.any (\rec -> isSameDay day rec.time)
 
 
 renderCalendarDay : List TrackingRecord -> Time.Posix -> Html Msg
@@ -314,7 +365,9 @@ renderCalendarDay trackedDays day =
                 "bg-gray-200"
     in
     div
-        [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass) ]
+        [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass)
+        , onClick (ToggleDaysNotes day)
+        ]
         [ text dayStr ]
 
 
