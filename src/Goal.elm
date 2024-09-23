@@ -183,7 +183,7 @@ renderGoalBody ctx goal =
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
-        , trackingCalendar ctx goal.daysTracked
+        , trackingCalendar ctx goal
         , renderTrackingDialog ctx.now goal
         , renderDeletionDialog goal
         ]
@@ -194,7 +194,7 @@ renderDeleteAction goal =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-red-100", goal.ui.showDeleteDialog )
+            , ( "bg-red-100 animate-pulse", goal.ui.showDeleteDialog )
             ]
         , title "Delete this goal"
         , onClick ShowDeleteModal
@@ -207,7 +207,7 @@ renderTrackAction goal =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-green-100", goal.ui.showTrackingDialog )
+            , ( "bg-green-100 animate-pulse", goal.ui.showTrackingDialog )
             ]
         , title "Track this goal for today"
         , onClick ShowTrackingModal
@@ -236,7 +236,7 @@ renderTrackingDialog now goal =
                 [ text "Commit" ]
             , button
                 [ onClick CancelTracking
-                , class "px-2 py bg-pink-100 rounded"
+                , class "px-2 py bg-gray-100 rounded"
                 ]
                 [ text "Cancel" ]
             ]
@@ -271,7 +271,11 @@ renderDeletionDialog goal =
 renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
-        [ class "flex hover:shadow-lg group transition-shadow hover:bg-slate-50" ]
+        [ classList
+            [ ( "flex hover:shadow-lg group transition-shadow hover:bg-slate-50", True )
+            , ( "shadow-lg bg-slate-50", goal.ui.showDeleteDialog || goal.ui.showTrackingDialog )
+            ]
+        ]
         [ renderDeleteAction goal
         , renderGoalBody ctx goal
         , renderTrackAction goal
@@ -354,17 +358,21 @@ monthToStr month =
             "Dec"
 
 
-trackingCalendar : GoalContext -> List TrackingRecord -> Html Msg
-trackingCalendar { daysOfMonth, now } records =
+trackingCalendar : GoalContext -> Goal -> Html Msg
+trackingCalendar { daysOfMonth, now } goal =
     let
         monthName =
             monthToStr <| Time.toMonth Time.utc now
     in
     section
-        [ class "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100" ]
+        [ classList
+            [ ( "flex flex gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
+            , ( "opacity-100", goal.ui.showDeleteDialog || goal.ui.showTrackingDialog )
+            ]
+        ]
     <|
         header [ class "font-bold" ] [ text monthName ]
-            :: List.map (renderCalendarDay records) daysOfMonth
+            :: List.map (renderCalendarDay goal.daysTracked) daysOfMonth
 
 
 plusIcon : Html Msg
