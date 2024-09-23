@@ -1,7 +1,7 @@
 {
-  "name": "Track your goals",
+  "name": "GoalMet - Achieve your goal easily",
   "version": "1.0.0",
-  "description": "Track your goals every time you start a new tab",
+  "description": "Achieve your goals and stay on track",
   "permissions": ["storage"],
   "optional_permissions": ["topSites"],
   "icons": {
