@@ -2,7 +2,7 @@ node_modules
 elm-stuff
 
 # Output
-.output
+/output
 /dist
 
 # OS

@@ -6,6 +6,8 @@
 		"postinstall": "elm-tooling install",
 		"dev": "vite",
     "prebuild": "elm-tooling install",
+    "prepackage": "npm run build",
+    "package": "./pkg.sh",
 		"build": "vite build",
     "serve": "vite preview",
 		"format": "elm format"
