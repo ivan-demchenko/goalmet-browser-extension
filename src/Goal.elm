@@ -123,7 +123,6 @@ update msg goal =
                     { oldUI
                         | showDeleteDialog = True
                         , showTrackingDialog = False
-                        , notesOfDay = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -147,7 +146,6 @@ update msg goal =
                     { oldUI
                         | showTrackingDialog = True
                         , showDeleteDialog = False
-                        , notesOfDay = Nothing
                     }
             in
             { goal | ui = newUI }
@@ -249,8 +247,6 @@ renderGoalBody ctx goal =
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
         , trackingCalendar ctx goal
-        , renderTrackingDialog ctx.now goal
-        , renderDeletionDialog goal
         , notesView
         ]
 
@@ -285,7 +281,7 @@ renderTrackingDialog : Time.Posix -> Goal -> Html Msg
 renderTrackingDialog now goal =
     div
         [ classList
-            [ ( "flex flex-col", True )
+            [ ( "flex flex-col absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "block", goal.ui.showTrackingDialog )
             , ( "hidden", not goal.ui.showTrackingDialog )
             ]
@@ -316,7 +312,7 @@ renderDeletionDialog : Goal -> Html Msg
 renderDeletionDialog goal =
     div
         [ classList
-            [ ( "flex flex-col", True )
+            [ ( "flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "block", goal.ui.showDeleteDialog )
             , ( "hidden", not goal.ui.showDeleteDialog )
             ]
@@ -373,13 +369,15 @@ renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
         [ classList
-            [ ( "flex hover:shadow-lg group transition-shadow hover:bg-slate-50", True )
+            [ ( "border-box flex hover:shadow-lg group transition-shadow hover:bg-slate-50 relative", True )
             , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal )
             ]
         ]
         [ renderDeleteAction goal
         , renderGoalBody ctx goal
         , renderTrackAction goal
+        , renderTrackingDialog ctx.now goal
+        , renderDeletionDialog goal
         ]
 
 
