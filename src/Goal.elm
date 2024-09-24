@@ -131,7 +131,7 @@ update msg goal =
         DeleteGoal ->
             goal
 
-        CommitGoalTracking now ->
+        CommitGoalTracking dayTracked ->
             let
                 oldUI =
                     goal.ui
@@ -140,7 +140,7 @@ update msg goal =
                     { oldUI | showTrackingDialog = False, noteText = "" }
             in
             { goal
-                | trackingRecords = TrackingRecord now goal.ui.noteText :: goal.trackingRecords
+                | trackingRecords = TrackingRecord dayTracked goal.ui.noteText :: goal.trackingRecords
                 , ui = newUI
             }
 
@@ -265,13 +265,17 @@ renderTrackAction goal =
 
 renderTrackingDialog : Time.Posix -> Goal -> Html Msg
 renderTrackingDialog now goal =
+    let
+        trackingDay =
+            Maybe.withDefault now goal.ui.selectedDay
+    in
     div
         [ classList
             [ ( "flex flex-col justify-center items-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "hidden", not goal.ui.showTrackingDialog )
             ]
         ]
-        [ span [] [ text <| "Record the " ++ Utils.formatDateFull now ++ ". Any comments?" ]
+        [ span [] [ text <| "Record the " ++ Utils.formatDateFull trackingDay ++ ". Any comments?" ]
         , textarea
             [ class "border border-gray-200 mb-1 w-full"
             , value goal.ui.noteText
@@ -280,7 +284,7 @@ renderTrackingDialog now goal =
             []
         , div [ class "text-center" ]
             [ button
-                [ onClick (CommitGoalTracking now)
+                [ onClick (CommitGoalTracking trackingDay)
                 , class "px-2 py bg-green-100 rounded mr-1"
                 ]
                 [ text "Commit" ]

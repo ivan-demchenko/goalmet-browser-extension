@@ -162,7 +162,7 @@ renderGoals model items =
                     Goal.GoalContext model.daysOfMonth model.now
 
                 render =
-                    \g -> Html.map (FromGoal (Goal.getGoalId g)) <| Goal.renderGoal ctx g
+                    \g -> Html.map (FromGoal (Goal.getGoalId g)) (Goal.renderGoal ctx g)
             in
             ul [ class "flex-1 flex flex-col justify-center" ] <|
                 List.map render goals
