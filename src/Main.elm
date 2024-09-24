@@ -5,8 +5,8 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import Html exposing (Html, button, div, header, input, main_, section, text, ul)
-import Html.Attributes exposing (class, disabled, value)
+import Html exposing (Attribute, Html, button, datalist, div, header, input, main_, section, text, ul)
+import Html.Attributes exposing (class, disabled, id, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
@@ -168,10 +168,15 @@ renderGoals model items =
                 List.map render goals
 
 
+testId : String -> Attribute msg
+testId val =
+    Html.Attributes.attribute "data-testid" val
+
+
 view : Model -> Html Msg
 view model =
-    div [ class "h-full flex flex-col" ]
-        [ header [ class "p-4 mb-4 flex justify-center gap-1" ]
+    div [ class "h-full flex flex-col", testId "app-root" ]
+        [ header [ class "p-4 mb-4 flex justify-center gap-1", testId "app-header" ]
             [ input
                 [ class "w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none"
                 , onInput SetNewGoalsText
@@ -186,7 +191,9 @@ view model =
                 [ text "Add a goal" ]
             ]
         , main_
-            [ class "flex-1 flex flex-col items-center justify-center" ]
+            [ class "flex-1 flex flex-col items-center justify-center"
+            , testId "app-body"
+            ]
             [ renderGoals model model.goals
             ]
         ]

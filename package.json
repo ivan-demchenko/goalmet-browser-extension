@@ -1,24 +1,26 @@
 {
-	"name": "tab-focus-ext",
-	"version": "1.0.0",
-	"private": true,
-	"scripts": {
-		"postinstall": "elm-tooling install",
-		"dev": "vite",
+  "name": "tab-focus-ext",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "elm-tooling install",
+    "dev": "vite",
     "prebuild": "elm-tooling install",
     "prepackage": "npm run build",
     "package": "./pkg.sh",
-		"build": "vite build",
+    "build": "vite build",
     "serve": "vite preview",
-		"format": "elm format"
-	},
-	"devDependencies": {
-		"autoprefixer": "^10.4.20",
-		"elm-tooling": "^1.15.1",
-		"postcss": "^8.4.47",
-		"tailwindcss": "^3.4.12",
-		"vite": "^5.4.1",
-		"vite-plugin-elm": "^3.0.1"
-	},
-	"type": "module"
+    "format": "elm format"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "@types/node": "^22.6.1",
+    "autoprefixer": "^10.4.20",
+    "elm-tooling": "^1.15.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.12",
+    "vite": "^5.4.1",
+    "vite-plugin-elm": "^3.0.1"
+  },
+  "type": "module"
 }
