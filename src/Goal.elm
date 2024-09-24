@@ -1,5 +1,6 @@
 module Goal exposing (..)
 
+import CalendarDay as CalD
 import Html exposing (Html, button, div, header, li, section, span, text, textarea, ul)
 import Html.Attributes exposing (class, classList, title, value)
 import Html.Events exposing (onClick, onInput)
@@ -346,27 +347,18 @@ isDayTracked day =
     List.any (\rec -> Utils.isSameDay day rec.time)
 
 
-renderCalendarDay : List TrackingRecord -> Time.Posix -> Html Msg
-renderCalendarDay trackedDays day =
-    let
-        dayStr =
-            String.fromInt << Time.toDay Time.utc <| day
+renderCalendarDay : CalD.Model -> Html Msg
+renderCalendarDay dayModel =
+    CalD.view (Ui << ToggleDaysNotes) dayModel
 
-        isTracked =
-            isDayTracked day trackedDays
 
-        colorClass =
-            if isTracked then
-                "bg-green-300"
+getDayStatus : List TrackingRecord -> Time.Posix -> CalD.Status
+getDayStatus trackingHistory day =
+    if isDayTracked day trackingHistory then
+        CalD.Tracked
 
-            else
-                "bg-gray-200"
-    in
-    button
-        [ class ("text-center text-xs text-gray-600 font-bold rounded w-6 py-1 " ++ colorClass)
-        , onClick <| Ui (ToggleDaysNotes day)
-        ]
-        [ text dayStr ]
+    else
+        CalD.Empty
 
 
 trackingCalendar : GoalContext -> Goal -> Html Msg
@@ -374,6 +366,11 @@ trackingCalendar { daysOfMonth, now } goal =
     let
         monthName =
             monthToStr <| Time.toMonth Time.utc now
+
+        calendarDays =
+            List.map
+                (\t -> CalD.Model t (getDayStatus goal.daysTracked t))
+                daysOfMonth
     in
     section
         [ classList
@@ -382,5 +379,5 @@ trackingCalendar { daysOfMonth, now } goal =
             ]
         ]
         (header [ class "font-bold" ] [ text monthName ]
-            :: List.map (renderCalendarDay goal.daysTracked) daysOfMonth
+            :: List.map renderCalendarDay calendarDays
         )
