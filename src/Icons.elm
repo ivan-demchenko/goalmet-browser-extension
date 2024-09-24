@@ -5,7 +5,7 @@ import Svg exposing (path, svg)
 import Svg.Attributes exposing (cx, cy, d, fill, height, r, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width)
 
 
-plusIcon : Html ()
+plusIcon : Html msg
 plusIcon =
     svg
         [ width "24px"
@@ -46,7 +46,7 @@ plusIcon =
         ]
 
 
-deleteIcon : Html ()
+deleteIcon : Html msg
 deleteIcon =
     svg
         [ width "24px"

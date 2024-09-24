@@ -1,73 +1,47 @@
-module Calendar exposing (..)
+module Calendar exposing (ViewModel, view)
 
 import CalendarDay
-import Derberos.Date.Calendar as C
-import Derberos.Date.Utils as DU
 import Html exposing (Html, header, section, text)
 import Html.Attributes exposing (class)
 import Time
 import Utils
 
 
-type alias Model =
-    { now : Time.Posix
-    , trackedDays : List Time.Posix
-    , daysOfMonth : List Time.Posix
-    , selectedDay : Maybe CalendarDay.Model
+isDayTracked : Time.Posix -> List Time.Posix -> Bool
+isDayTracked day1 history =
+    List.any (Utils.isSameDay day1) history
+
+
+isDaySelected : Maybe Time.Posix -> Time.Posix -> Bool
+isDaySelected maybeDay day =
+    case maybeDay of
+        Just d ->
+            Utils.isSameDay d day
+
+        Nothing ->
+            False
+
+
+type alias ViewModel msg =
+    { daysOfMonth : List Time.Posix
+    , today : Time.Posix
+    , handleDayClick : Time.Posix -> msg
+    , trackingHistory : List Time.Posix
+    , selectedDay : Maybe Time.Posix
     }
 
 
-type Msg
-    = SelectDay Time.Posix
-
-
-updateTrackedDays : List Time.Posix -> Model -> Model
-updateTrackedDays days model =
-    { model | trackedDays = days }
-
-
-initModel : Time.Posix -> List Time.Posix -> Model
-initModel now trackedDays =
-    let
-        daysOfMonth =
-            List.map DU.resetTime (C.getCurrentMonthDates Time.utc now)
-    in
-    Model now trackedDays daysOfMonth Nothing
-
-
-renderCalendarDay : CalendarDay.Model -> Html Msg
-renderCalendarDay dayModel =
-    CalendarDay.view SelectDay dayModel
-
-
-isDayTracked : Time.Posix -> List Time.Posix -> Bool
-isDayTracked day =
-    List.any (\dayN -> Utils.isSameDay day dayN)
-
-
-getDayStatus : Model -> Time.Posix -> CalendarDay.Status
-getDayStatus model day =
-    if isDayTracked day model.trackedDays then
-        CalendarDay.Tracked
-
-    else
-        CalendarDay.Empty
-
-
-view : Model -> Html Msg
-view model =
+view : ViewModel msg -> Html msg
+view vm =
     let
         monthName =
-            Utils.monthToStr <| Time.toMonth Time.utc model.now
-
-        calendarDays =
-            List.map
-                (\day -> CalendarDay.Model day (getDayStatus model day))
-                model.daysOfMonth
+            Utils.monthToStr <| Time.toMonth Time.utc vm.today
     in
     section
         [ class "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100"
         ]
         (header [ class "font-bold" ] [ text monthName ]
-            :: List.map renderCalendarDay calendarDays
+            :: List.map
+                (CalendarDay.view vm.handleDayClick)
+                (List.map (\day -> CalendarDay.ViewModel (isDayTracked day vm.trackingHistory) (isDaySelected vm.selectedDay day) day) vm.daysOfMonth)
         )

@@ -1,4 +1,4 @@
-module CalendarDay exposing (..)
+module CalendarDay exposing (ViewModel, view)
 
 import Html exposing (Html, button, text)
 import Html.Attributes exposing (classList)
@@ -6,32 +6,26 @@ import Html.Events exposing (onClick)
 import Time
 
 
-type Status
-    = Empty
-    | Tracked
-    | Selected
-
-
-type alias Model =
-    { day : Time.Posix
-    , status : Status
+type alias ViewModel =
+    { hasNotes : Bool
+    , isSelected : Bool
+    , day : Time.Posix
     }
 
 
-classOfStatus : Status -> String
-classOfStatus status =
-    case status of
-        Empty ->
-            "bg-gray-200"
+classOfStatus : ViewModel -> String
+classOfStatus model =
+    if model.isSelected then
+        "bg-blue-300"
 
-        Tracked ->
-            "bg-green-300"
+    else if model.hasNotes then
+        "bg-green-300"
 
-        Selected ->
-            "bg-blue-300"
+    else
+        "bg-gray-200"
 
 
-view : (Time.Posix -> msg) -> Model -> Html msg
+view : (Time.Posix -> msg) -> ViewModel -> Html msg
 view handleClick model =
     let
         dayStr =
@@ -40,7 +34,7 @@ view handleClick model =
     button
         [ classList
             [ ( "text-center text-xs text-gray-600 font-bold rounded w-6 py-1 ", True )
-            , ( classOfStatus model.status, True )
+            , ( classOfStatus model, True )
             ]
         , onClick (handleClick model.day)
         ]

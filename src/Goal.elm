@@ -1,14 +1,14 @@
 module Goal exposing (..)
 
-import CalendarDay as CalD
-import Html exposing (Html, button, div, header, li, section, span, text, textarea, ul)
+import Calendar
+import Html exposing (Html, button, div, li, section, span, text, textarea, ul)
 import Html.Attributes exposing (class, classList, title, value)
 import Html.Events exposing (onClick, onInput)
 import Icons
 import Json.Decode as D
 import Json.Encode as E
 import Time
-import Utils exposing (monthToStr)
+import Utils
 
 
 type UiMsg
@@ -16,7 +16,7 @@ type UiMsg
     | CancelTracking
     | ShowDeleteModal
     | CancelDeletion
-    | ToggleDaysNotes Time.Posix
+    | SelectDay Time.Posix
     | SetTrackingNoteText String
 
 
@@ -24,7 +24,6 @@ type Msg
     = CommitGoalTracking Time.Posix
     | DeleteGoal
     | Ui UiMsg
-    | Noop
 
 
 type alias TrackingRecord =
@@ -35,21 +34,21 @@ type alias TrackingRecord =
 
 type alias GoalContext =
     { daysOfMonth : List Time.Posix
-    , now : Time.Posix
+    , today : Time.Posix
     }
 
 
 type alias UiModel =
     { showDeleteDialog : Bool
     , showTrackingDialog : Bool
-    , notesOfDay : Maybe Time.Posix
+    , selectedDay : Maybe Time.Posix
     , noteText : String
     }
 
 
 type alias Goal =
     { text : String
-    , daysTracked : List TrackingRecord
+    , trackingRecords : List TrackingRecord
     , ui : UiModel
     }
 
@@ -68,7 +67,7 @@ shouldUiStayOpen : UiModel -> Bool
 shouldUiStayOpen ui =
     let
         showNotes =
-            case ui.notesOfDay of
+            case ui.selectedDay of
                 Just _ ->
                     True
 
@@ -84,24 +83,24 @@ updateUi uiMsg uiModel =
         SetTrackingNoteText str ->
             { uiModel | noteText = str }
 
-        ToggleDaysNotes day ->
+        SelectDay selectedDay ->
             let
                 dayToView =
-                    case uiModel.notesOfDay of
+                    case uiModel.selectedDay of
                         Just openedDay ->
-                            if Utils.isSameDay openedDay day then
+                            if Utils.isSameDay openedDay selectedDay then
                                 Nothing
 
                             else
-                                Just day
+                                Just selectedDay
 
                         _ ->
-                            Just day
+                            Just selectedDay
             in
             { uiModel
                 | showDeleteDialog = False
                 , showTrackingDialog = False
-                , notesOfDay = dayToView
+                , selectedDay = dayToView
             }
 
         ShowDeleteModal ->
@@ -132,9 +131,6 @@ update msg goal =
         DeleteGoal ->
             goal
 
-        Noop ->
-            goal
-
         CommitGoalTracking now ->
             let
                 oldUI =
@@ -144,7 +140,7 @@ update msg goal =
                     { oldUI | showTrackingDialog = False, noteText = "" }
             in
             { goal
-                | daysTracked = TrackingRecord now goal.ui.noteText :: goal.daysTracked
+                | trackingRecords = TrackingRecord now goal.ui.noteText :: goal.trackingRecords
                 , ui = newUI
             }
 
@@ -196,7 +192,7 @@ goalEncoder : Goal -> E.Value
 goalEncoder goal =
     E.object
         [ ( "text", E.string goal.text )
-        , ( "daysTracked", E.list trackingRecordEncoder goal.daysTracked )
+        , ( "daysTracked", E.list trackingRecordEncoder goal.trackingRecords )
         ]
 
 
@@ -208,11 +204,26 @@ getGoalId goal =
 renderGoalBody : GoalContext -> Goal -> Html Msg
 renderGoalBody ctx goal =
     let
-        notesView =
-            case goal.ui.notesOfDay of
+        calendarViewModel =
+            Calendar.ViewModel
+                ctx.daysOfMonth
+                ctx.today
+                (Ui << SelectDay)
+                (List.map .time goal.trackingRecords)
+                goal.ui.selectedDay
+
+        calendarView =
+            Calendar.view calendarViewModel
+
+        renderedNotes : Html Msg
+        renderedNotes =
+            case goal.ui.selectedDay of
                 Just day ->
-                    renderListOfNotes day <|
-                        List.filter (\d -> Utils.isSameDay day d.time) goal.daysTracked
+                    let
+                        notesOfSelectedDay =
+                            List.filter (\d -> Utils.isSameDay day d.time) goal.trackingRecords
+                    in
+                    renderListOfNotes day notesOfSelectedDay
 
                 Nothing ->
                     div [] []
@@ -221,8 +232,8 @@ renderGoalBody ctx goal =
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
-        , trackingCalendar ctx goal
-        , notesView
+        , calendarView
+        , renderedNotes
         ]
 
 
@@ -236,7 +247,7 @@ renderDeleteAction goal =
         , title "Delete this goal"
         , onClick <| Ui ShowDeleteModal
         ]
-        [ Html.map (\_ -> Noop) Icons.deleteIcon ]
+        [ Icons.deleteIcon ]
 
 
 renderTrackAction : Goal -> Html Msg
@@ -249,7 +260,7 @@ renderTrackAction goal =
         , title "Track this goal for today"
         , onClick <| Ui ShowTrackingModal
         ]
-        [ Html.map (\_ -> Noop) Icons.plusIcon ]
+        [ Icons.plusIcon ]
 
 
 renderTrackingDialog : Time.Posix -> Goal -> Html Msg
@@ -264,7 +275,7 @@ renderTrackingDialog now goal =
         , textarea
             [ class "border border-gray-200 mb-1 w-full"
             , value goal.ui.noteText
-            , onInput (\s -> Ui <| SetTrackingNoteText s)
+            , onInput (Ui << SetTrackingNoteText)
             ]
             []
         , div [ class "text-center" ]
@@ -313,8 +324,7 @@ renderListOfNotes day records =
             \{ note } -> li [ class "p-1" ] [ text note ]
     in
     section [ class "w-2/3 text-center mt-2" ]
-        [ div []
-            [ text <| Utils.formatDateFull day ]
+        [ div [] [ text <| Utils.formatDateFull day ]
         , ul
             [ class "divide-solid divide-y" ]
             (if List.isEmpty records then
@@ -337,47 +347,6 @@ renderGoal ctx goal =
         [ renderDeleteAction goal
         , renderGoalBody ctx goal
         , renderTrackAction goal
-        , renderTrackingDialog ctx.now goal
+        , renderTrackingDialog ctx.today goal
         , renderDeletionDialog goal
         ]
-
-
-isDayTracked : Time.Posix -> List TrackingRecord -> Bool
-isDayTracked day =
-    List.any (\rec -> Utils.isSameDay day rec.time)
-
-
-renderCalendarDay : CalD.Model -> Html Msg
-renderCalendarDay dayModel =
-    CalD.view (Ui << ToggleDaysNotes) dayModel
-
-
-getDayStatus : List TrackingRecord -> Time.Posix -> CalD.Status
-getDayStatus trackingHistory day =
-    if isDayTracked day trackingHistory then
-        CalD.Tracked
-
-    else
-        CalD.Empty
-
-
-trackingCalendar : GoalContext -> Goal -> Html Msg
-trackingCalendar { daysOfMonth, now } goal =
-    let
-        monthName =
-            monthToStr <| Time.toMonth Time.utc now
-
-        calendarDays =
-            List.map
-                (\t -> CalD.Model t (getDayStatus goal.daysTracked t))
-                daysOfMonth
-    in
-    section
-        [ classList
-            [ ( "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "opacity-100", shouldUiStayOpen goal.ui )
-            ]
-        ]
-        (header [ class "font-bold" ] [ text monthName ]
-            :: List.map renderCalendarDay calendarDays
-        )
