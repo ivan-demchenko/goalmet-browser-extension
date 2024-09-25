@@ -10,7 +10,8 @@
     "package": "./pkg.sh",
     "build": "vite build",
     "serve": "vite preview",
-    "format": "elm format"
+    "format": "elm format",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.2",
