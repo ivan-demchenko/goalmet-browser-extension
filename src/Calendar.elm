@@ -2,7 +2,7 @@ module Calendar exposing (ViewModel, view)
 
 import CalendarDay
 import Html exposing (Html, header, section, text)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, classList)
 import Time
 import Utils
 
@@ -28,6 +28,7 @@ type alias ViewModel msg =
     , handleDayClick : Time.Posix -> msg
     , trackingHistory : List Time.Posix
     , selectedDay : Maybe Time.Posix
+    , shouldStayOn : Bool
     }
 
 
@@ -38,7 +39,10 @@ view vm =
             Utils.monthToStr <| Time.toMonth Time.utc vm.today
     in
     section
-        [ class "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100"
+        [ classList
+            [ ( "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
+            , ( "opacity-100", vm.shouldStayOn )
+            ]
         , Utils.testId "calendar-body"
         ]
         (header [ class "font-bold" ] [ text monthName ]

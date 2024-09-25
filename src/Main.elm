@@ -193,24 +193,24 @@ renderAbout : Model -> Html Msg
 renderAbout model =
     div
         [ classList
-            [ ( "bg-gray-300/50 flex absolute w-full h-full items-center justify-center", True )
+            [ ( "bg-gray-300/50 dark:bg-gray-800/50 flex absolute w-full h-full items-center justify-center", True )
             , ( "hidden", not model.showAbout )
             ]
         ]
         [ div
-            [ class "w-1/3 h-2/3 rounded-xl shadow-xl flex flex-col justify-center bg-white text-center p-4" ]
+            [ class "w-1/3 h-2/3 rounded-xl shadow-xl flex flex-col justify-center bg-white dark:bg-slate-800 dark:text-gray-400 text-center p-4" ]
             [ p [ class "mb-4" ] [ text "Greetings from the author of this extension! 👋" ]
             , p [ class "mb-4" ] [ text myStory ]
             , p [ class "mb-4" ] [ text myStory2 ]
             , a
                 [ href "https://buymeacoffee.com/ivan.demchenko"
                 , target "blank"
-                , class "block mb-4 rounded-md bg-yellow-500 self-center px-3 py-1"
+                , class "block mb-4 rounded-md bg-yellow-500 dark:bg-yellow-700 dark:text-yellow-200 self-center px-3 py-1"
                 ]
                 [ text "Buy me a coffee ☕️" ]
             , button
                 [ onClick ToggleAbout
-                , class "text-gray-600"
+                , class "text-gray-600 dark:text-gray-400"
                 ]
                 [ text "Close" ]
             ]
@@ -237,7 +237,7 @@ view model =
                     [ text "Add a goal" ]
                 ]
             , button
-                [ class "text-xs"
+                [ class "text-xs dark:text-blue-300"
                 , onClick ToggleAbout
                 ]
                 [ text "Support me ☕️" ]
