@@ -246,7 +246,7 @@ renderDeleteAction goal =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-red-100 animate-pulse", goal.ui.showDeleteDialog )
+            , ( "bg-red-100 dark:bg-red-900 opacity-100", goal.ui.showDeleteDialog )
             ]
         , title "Delete this goal"
         , onClick <| Ui ShowDeleteModal
@@ -260,7 +260,7 @@ renderTrackAction goal =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-green-100 animate-pulse", goal.ui.showTrackingDialog )
+            , ( "bg-green-100 dark:bg-green-900 opacity-100", goal.ui.showTrackingDialog )
             ]
         , title "Track this goal for today"
         , onClick <| Ui ShowTrackingModal
@@ -277,14 +277,14 @@ renderTrackingDialog now goal =
     in
     div
         [ classList
-            [ ( "flex flex-col justify-center items-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
-            , ( "hidden", not goal.ui.showTrackingDialog )
+            [ ( "dialog", True )
+            , ( "dialog-hidden", not goal.ui.showTrackingDialog )
             ]
         , Utils.testId "goal-tracking-dialog"
         ]
         [ span [] [ text <| "Record the " ++ Utils.formatDateFull trackingDay ++ ". Any comments?" ]
         , textarea
-            [ class "border border-gray-200 mb-1 w-full"
+            [ class "textarea"
             , value goal.ui.noteText
             , onInput (Ui << SetTrackingNoteText)
             ]
@@ -292,12 +292,12 @@ renderTrackingDialog now goal =
         , div [ class "text-center" ]
             [ button
                 [ onClick (CommitGoalTracking trackingDay)
-                , class "px-2 py bg-green-100 rounded mr-1"
+                , class "dialog-green"
                 ]
                 [ text "Commit" ]
             , button
                 [ onClick <| Ui CancelTracking
-                , class "px-2 py bg-gray-100 rounded"
+                , class "dialog-neutral"
                 ]
                 [ text "Cancel" ]
             ]
@@ -308,21 +308,21 @@ renderDeletionDialog : Goal -> Html Msg
 renderDeletionDialog goal =
     div
         [ classList
-            [ ( "flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
-            , ( "hidden", not goal.ui.showDeleteDialog )
+            [ ( "dialog", True )
+            , ( "dialog-hidden", not goal.ui.showDeleteDialog )
             ]
         , Utils.testId "goal-deletion-dialog"
         ]
-        [ span [] [ text "Are you sure you want to delete it?" ]
+        [ div [ class "mb-2" ] [ text "Are you sure you want to delete it?" ]
         , div [ class "text-center" ]
             [ button
                 [ onClick DeleteGoal
-                , class "px-2 py bg-red-100 rounded mr-1"
+                , class "dialog-danger"
                 ]
                 [ text "Delete" ]
             , button
                 [ onClick <| Ui CancelDeletion
-                , class "px-2 py bg-gray-100 rounded"
+                , class "dialog-neutral"
                 ]
                 [ text "Cancel" ]
             ]

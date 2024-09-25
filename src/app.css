@@ -4,13 +4,17 @@
 
 
 .add-goal-input {
-  @apply w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none bg-transparent;
-  @apply dark:border-gray-600 text-gray-300;
+  @apply w-1/3 p-1 border-b text-gray-800 border-gray-400 focus:border-b-green-500 focus:outline-none bg-transparent;
+  @apply dark:border-gray-600 dark:text-gray-300;
 }
 
 .add-goal-button {
-  @apply px-4 py-1 rounded bg-transparent hover:bg-slate-200 disabled:text-gray-400;
-  @apply dark:text-gray-400 dark:disabled:text-gray-500 dark:hover:bg-gray-700;
+  @apply px-4 py-1 rounded bg-transparent hover:bg-green-100 hover:text-green-900 disabled:text-gray-400 disabled:hover:bg-transparent;
+  @apply dark:text-gray-400 dark:disabled:text-gray-500 dark:hover:bg-green-950 dark:hover:text-green-300;
+}
+
+.icon-line {
+  @apply stroke-gray-800 dark:stroke-gray-400;
 }
 
 .goal {
@@ -28,6 +32,30 @@
 }
 
 .dialog {
-  @apply flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm items-center p-2;
-  @apply dark:bg-black/20
+  @apply flex flex-col justify-center items-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm;
+  @apply dark:bg-black/20;
+}
+
+.dialog-hidden {
+  @apply hidden;
+}
+
+.dialog-green {
+  @apply px-2 bg-green-300 rounded mr-1;
+  @apply dark:text-green-200 dark:bg-green-700;
+}
+
+.dialog-danger {
+  @apply px-2 bg-red-300 rounded mr-1;
+  @apply dark:text-red-200 dark:bg-red-700;
+}
+
+.dialog-neutral {
+  @apply px-2 bg-gray-200 rounded;
+  @apply dark:text-gray-300 dark:bg-gray-700;
+}
+
+.textarea {
+  @apply border border-gray-200 mb-1 w-full;
+  @apply dark:bg-gray-800 dark:border-gray-600;
 }
