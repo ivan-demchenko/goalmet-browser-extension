@@ -16,13 +16,13 @@ type alias ViewModel =
 classOfStatus : ViewModel -> String
 classOfStatus model =
     if model.isSelected then
-        "bg-blue-300"
+        "bg-blue-300 dark:bg-blue-700"
 
     else if model.hasNotes then
-        "bg-green-300"
+        "bg-green-300 dark:bg-green-700"
 
     else
-        "bg-gray-200"
+        "bg-gray-200 dark:bg-gray-700"
 
 
 view : (Time.Posix -> msg) -> ViewModel -> Html msg
@@ -33,7 +33,7 @@ view handleClick model =
     in
     button
         [ classList
-            [ ( "text-center text-xs text-gray-600 font-bold rounded w-6 py-1 ", True )
+            [ ( "text-center text-xs font-bold rounded w-6 py-1 ", True )
             , ( classOfStatus model, True )
             ]
         , onClick (handleClick model.day)

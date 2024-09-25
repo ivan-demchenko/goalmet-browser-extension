@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+.add-goal-input {
+  @apply w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none bg-transparent;
+  @apply dark:border-gray-600 text-gray-300;
+}
+
+.add-goal-button {
+  @apply px-4 py-1 rounded bg-transparent hover:bg-slate-200 disabled:text-gray-400;
+  @apply dark:text-gray-400 dark:disabled:text-gray-500 dark:hover:bg-gray-700;
+}
+
+.goal {
+  @apply mb-1 flex transition-shadow hover:shadow-lg hover:bg-slate-50 relative;
+  @apply dark:text-gray-400 dark:hover:bg-slate-800 dark:hover:text-gray-300;
+}
+
+.goal-open {
+  @apply shadow-lg bg-slate-50;
+  @apply dark:bg-slate-800;
+}
+
+.calendar {
+  @apply flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100;
+}
+
+.dialog {
+  @apply flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm items-center p-2;
+  @apply dark:bg-black/20
+}

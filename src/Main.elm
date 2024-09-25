@@ -5,8 +5,8 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import Html exposing (Html, button, div, header, input, main_, section, text, ul)
-import Html.Attributes exposing (class, disabled, id, value)
+import Html exposing (Html, a, button, div, header, input, main_, p, section, text, ul)
+import Html.Attributes exposing (class, classList, disabled, href, id, target, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
@@ -21,6 +21,7 @@ type alias Model =
     , daysOfMonth : List T.Posix
     , newGoalText : String
     , canAddGoal : Bool
+    , showAbout : Bool
     }
 
 
@@ -35,6 +36,7 @@ type Msg
     = SetNewGoalsText String
     | GotTime T.Posix
     | AddGoal
+    | ToggleAbout
     | FromGoal String Goal.Msg
 
 
@@ -71,6 +73,7 @@ init savedGoalsJSON =
             , daysOfMonth = []
             , now = today
             , canAddGoal = False
+            , showAbout = False
             }
     in
     ( model, timeCmd )
@@ -103,6 +106,9 @@ isGoalExist goals newGoalText =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        ToggleAbout ->
+            ( { model | showAbout = not model.showAbout }, Cmd.none )
+
         FromGoal id goalMsg ->
             if Goal.isDeleteRequest goalMsg then
                 let
@@ -155,7 +161,7 @@ renderGoals : Model -> List Goal.Goal -> Html Msg
 renderGoals model items =
     case items of
         [] ->
-            section [ class "text-slate-700 text-3xl font-thin" ] [ text "Add your first goal" ]
+            section [ class "text-gray-400 text-3xl font-thin" ] [ text "Add your first goal" ]
 
         goals ->
             let
@@ -169,27 +175,77 @@ renderGoals model items =
                 List.map render goals
 
 
+myStory : String
+myStory =
+    """I use the browser all the time (like all of us) and I often find myself
+opening a new tab and navigating to time-consuming websites almost automatically.
+I created this extension because I wanted to stop and remind myself of my priorities.
+"""
+
+
+myStory2 : String
+myStory2 =
+    """I sincerely hope you find this extension useful, and if you do, please consider supporting my work.
+"""
+
+
+renderAbout : Model -> Html Msg
+renderAbout model =
+    div
+        [ classList
+            [ ( "bg-gray-300/50 flex absolute w-full h-full items-center justify-center", True )
+            , ( "hidden", not model.showAbout )
+            ]
+        ]
+        [ div
+            [ class "w-1/3 h-2/3 rounded-xl shadow-xl flex flex-col justify-center bg-white text-center p-4" ]
+            [ p [ class "mb-4" ] [ text "Greetings from the author of this extension! 👋" ]
+            , p [ class "mb-4" ] [ text myStory ]
+            , p [ class "mb-4" ] [ text myStory2 ]
+            , a
+                [ href "https://buymeacoffee.com/ivan.demchenko"
+                , target "blank"
+                , class "block mb-4 rounded-md bg-yellow-500 self-center px-3 py-1"
+                ]
+                [ text "Buy me a coffee ☕️" ]
+            , button
+                [ onClick ToggleAbout
+                , class "text-gray-600"
+                ]
+                [ text "Close" ]
+            ]
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div [ class "h-full flex flex-col", testId "app-root" ]
-        [ header [ class "p-4 mb-4 flex justify-center gap-1", testId "app-header" ]
-            [ input
-                [ class "w-1/3 p-1 border-b border-gray-400 focus:border-b-green-500 focus:outline-none"
-                , onInput SetNewGoalsText
-                , value model.newGoalText
+        [ header [ class "p-4 mb-4 flex justify-center align-center gap-1", testId "app-header" ]
+            [ section
+                [ class "flex-1 flex justify-center gap-1" ]
+                [ input
+                    [ class "add-goal-input"
+                    , onInput SetNewGoalsText
+                    , value model.newGoalText
+                    ]
+                    []
+                , button
+                    [ class "add-goal-button"
+                    , onClick AddGoal
+                    , disabled <| not model.canAddGoal
+                    ]
+                    [ text "Add a goal" ]
                 ]
-                []
             , button
-                [ class "px-4 py-1 rounded bg-slate-200 hover:bg-slate-300 disabled:bg-white disabled:text-gray-400"
-                , onClick AddGoal
-                , disabled <| not model.canAddGoal
+                [ class "text-xs"
+                , onClick ToggleAbout
                 ]
-                [ text "Add a goal" ]
+                [ text "Support me ☕️" ]
             ]
         , main_
             [ class "flex-1 flex flex-col items-center justify-center"
             , testId "app-body"
             ]
-            [ renderGoals model model.goals
-            ]
+            [ renderGoals model model.goals ]
+        , renderAbout model
         ]

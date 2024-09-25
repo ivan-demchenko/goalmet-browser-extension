@@ -354,8 +354,8 @@ renderGoal : GoalContext -> Goal -> Html Msg
 renderGoal ctx goal =
     li
         [ classList
-            [ ( "mb-1 flex hover:shadow-lg group transition-shadow hover:bg-slate-50 relative", True )
-            , ( "shadow-lg bg-slate-50", shouldUiStayOpen goal.ui )
+            [ ( "group goal", True )
+            , ( "goal-open", shouldUiStayOpen goal.ui )
             ]
         ]
         [ renderDeleteAction goal
