@@ -2,7 +2,7 @@ module Icons exposing (..)
 
 import Html exposing (Html)
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (class, cx, cy, d, fill, height, r, stroke, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width)
+import Svg.Attributes exposing (class, cx, cy, d, fill, height, r, strokeLinecap, strokeLinejoin, strokeWidth, viewBox, width)
 
 
 plusIcon : Html msg
