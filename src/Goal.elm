@@ -211,6 +211,7 @@ renderGoalBody ctx goal =
                 (Ui << SelectDay)
                 (List.map .time goal.trackingRecords)
                 goal.ui.selectedDay
+                (shouldUiStayOpen goal.ui)
 
         calendarView =
             Calendar.view calendarViewModel
