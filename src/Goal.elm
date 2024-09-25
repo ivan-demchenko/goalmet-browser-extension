@@ -228,7 +228,10 @@ renderGoalBody ctx goal =
                 Nothing ->
                     div [] []
     in
-    div [ class "flex-1 flex flex-col p-3 justify-between items-center" ]
+    div
+        [ class "flex-1 flex flex-col p-3 justify-between items-center"
+        , Utils.testId "goal-goal-body"
+        ]
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
             [ text goal.text ]
@@ -246,6 +249,7 @@ renderDeleteAction goal =
             ]
         , title "Delete this goal"
         , onClick <| Ui ShowDeleteModal
+        , Utils.testId "goal-delete-action"
         ]
         [ Icons.deleteIcon ]
 
@@ -259,6 +263,7 @@ renderTrackAction goal =
             ]
         , title "Track this goal for today"
         , onClick <| Ui ShowTrackingModal
+        , Utils.testId "goal-track-action"
         ]
         [ Icons.plusIcon ]
 
@@ -274,6 +279,7 @@ renderTrackingDialog now goal =
             [ ( "flex flex-col justify-center items-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "hidden", not goal.ui.showTrackingDialog )
             ]
+        , Utils.testId "goal-tracking-dialog"
         ]
         [ span [] [ text <| "Record the " ++ Utils.formatDateFull trackingDay ++ ". Any comments?" ]
         , textarea
@@ -304,6 +310,7 @@ renderDeletionDialog goal =
             [ ( "flex flex-col justify-center absolute w-full h-full text-center bg-white/70 backdrop-blur-sm", True )
             , ( "hidden", not goal.ui.showDeleteDialog )
             ]
+        , Utils.testId "goal-deletion-dialog"
         ]
         [ span [] [ text "Are you sure you want to delete it?" ]
         , div [ class "text-center" ]
@@ -327,7 +334,10 @@ renderListOfNotes day records =
         commentView =
             \{ note } -> li [ class "p-1" ] [ text note ]
     in
-    section [ class "w-2/3 text-center mt-2" ]
+    section
+        [ class "w-2/3 text-center mt-2"
+        , Utils.testId "goal-tracking-notes"
+        ]
         [ div [] [ text <| Utils.formatDateFull day ]
         , ul
             [ class "divide-solid divide-y" ]

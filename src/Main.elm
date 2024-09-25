@@ -5,13 +5,14 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import Html exposing (Attribute, Html, button, datalist, div, header, input, main_, section, text, ul)
+import Html exposing (Html, button, div, header, input, main_, section, text, ul)
 import Html.Attributes exposing (class, disabled, id, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
 import Task
 import Time as T
+import Utils exposing (testId)
 
 
 type alias Model =
@@ -166,11 +167,6 @@ renderGoals model items =
             in
             ul [ class "flex-1 flex flex-col justify-center" ] <|
                 List.map render goals
-
-
-testId : String -> Attribute msg
-testId val =
-    Html.Attributes.attribute "data-testid" val
 
 
 view : Model -> Html Msg

@@ -39,6 +39,7 @@ view vm =
     in
     section
         [ class "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100"
+        , Utils.testId "calendar-body"
         ]
         (header [ class "font-bold" ] [ text monthName ]
             :: List.map

@@ -1,6 +1,13 @@
 module Utils exposing (..)
 
+import Html exposing (Attribute)
+import Html.Attributes exposing (attribute)
 import Time
+
+
+testId : String -> Attribute msg
+testId val =
+    attribute "data-testid" val
 
 
 isSameDay : Time.Posix -> Time.Posix -> Bool
