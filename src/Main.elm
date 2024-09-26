@@ -5,7 +5,7 @@ import Derberos.Date.Calendar as C
 import Derberos.Date.Core as DC
 import Derberos.Date.Utils as DU
 import Goal
-import Html exposing (Html, a, button, div, header, input, main_, p, section, text, ul)
+import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text, ul)
 import Html.Attributes exposing (class, classList, disabled, href, id, target, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as D
@@ -236,11 +236,6 @@ view model =
                     ]
                     [ text "Add a goal" ]
                 ]
-            , button
-                [ class "text-xs dark:text-blue-300"
-                , onClick ToggleAbout
-                ]
-                [ text "Support me ☕️" ]
             ]
         , main_
             [ class "flex-1 flex flex-col items-center justify-center"
@@ -248,4 +243,18 @@ view model =
             ]
             [ renderGoals model model.goals ]
         , renderAbout model
+        , footer
+            [ class "flex gap-4 justify-center p-4" ]
+            [ button
+                [ class "text-sm text-sky-700"
+                , onClick ToggleAbout
+                ]
+                [ text "Support me ☕️" ]
+            , a
+                [ class "text-sm text-sky-700"
+                , href "https://forms.gle/A8on4awiXMEmnAeh8"
+                , target "blank"
+                ]
+                [ text "Leave feedback" ]
+            ]
         ]
