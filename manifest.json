@@ -1,8 +1,8 @@
 {
-  "name": "GoalMet - Achieve your goals easily",
+  "name": "GoalMet - Achieve your goals",
   "version": "1.0.0",
-  "description": "Clean and gentle way to remind yourself about your goals. Achieve your goals and stay on track",
-  "permissions": ["storage", "sidePanel"],
+  "description": "Track goals daily, visualize progress, and stay focused with a minimalist new-tab reminder. Boost productivity, avoid distractions.",
+  "permissions": ["storage"],
   "manifest_version": 3,
   "icons": {
     "16": "images/icon16.png",
