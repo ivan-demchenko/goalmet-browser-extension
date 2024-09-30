@@ -1,0 +1,4 @@
+{
+  "*.elm": "elm-format --yes",
+  "*.{json,js,yml,css,md,html}": "prettier --write"
+}

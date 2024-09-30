@@ -4,6 +4,7 @@ elm-stuff
 # Output
 /output
 /dist
+/builds
 
 # OS
 .DS_Store

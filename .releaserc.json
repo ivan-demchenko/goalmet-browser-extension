@@ -1,0 +1,13 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "NV=${nextRelease.version} npm run release:set-versions && npm run build"
+      }
+    ]
+  ]
+}

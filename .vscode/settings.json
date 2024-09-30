@@ -1,4 +1,4 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "elmTooling.elm-ls-vscode"
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

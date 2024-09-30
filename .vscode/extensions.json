@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "elmtooling.elm-ls-vscode",
+    "editorconfig.editorconfig",
+    "bradlc.vscode-tailwindcss",
+    "vivaxy.vscode-conventional-commits",
+    "esbenp.prettier-vscode"
+  ]
+}

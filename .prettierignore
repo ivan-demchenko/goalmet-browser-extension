@@ -1,4 +1,8 @@
 # Package Managers
 package-lock.json
 pnpm-lock.yaml
-yarn.lock
+/elm-stuff
+/src/**/*.elm
+/node_modules
+/dist
+/.husky
