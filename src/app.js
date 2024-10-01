@@ -31,11 +31,18 @@ async function main(storage) {
 
     const app = Elm.Main.init({
         node: document.getElementById("app"),
-        flags: data.goals,
+        flags: {
+            command: "initial-goals",
+            payload: data.goals,
+        },
     });
 
-    app.ports.saveData.subscribe(function (state) {
-        storage.write("goals", state).catch((err) => console.error(err));
+    app.ports.sendRPC.subscribe((rpc) => {
+        if (rpc.command === "save-goals") {
+            storage
+                .write("goals", rpc.payload)
+                .catch((err) => console.error(err));
+        }
     });
 }
 

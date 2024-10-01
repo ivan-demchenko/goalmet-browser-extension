@@ -11,6 +11,13 @@ test("can add a goal", async ({ page }) => {
     await expect(
         page.getByRole("main").getByRole("list").getByText("My first goal")
     ).toBeVisible();
+
+    /** @type {Array<any>} */
+    const storedItems = await page.evaluate(() => {
+        let raw = window.localStorage.getItem("goals");
+        return raw ? JSON.parse(raw) : [];
+    });
+    expect(storedItems.length).toBeGreaterThan(0);
 });
 
 test("can delete a goal", async ({ page }) => {
@@ -25,6 +32,13 @@ test("can delete a goal", async ({ page }) => {
         .getByRole("button", { name: "Delete" })
         .click();
     await expect(page.getByText("Add your first goal")).toBeVisible();
+
+    /** @type {Array<any>} */
+    const storedItems = await page.evaluate(() => {
+        let raw = window.localStorage.getItem("goals");
+        return raw ? JSON.parse(raw) : [];
+    });
+    expect(storedItems.length).toEqual(0);
 });
 
 test("can track a goal", async ({ page }) => {

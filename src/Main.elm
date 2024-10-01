@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Browser
 import Derberos.Date.Calendar as C
@@ -8,8 +8,8 @@ import Goal
 import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text, ul)
 import Html.Attributes exposing (class, classList, disabled, href, id, target, value)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as D
 import Json.Encode as E
+import Rpc
 import Task
 import Time as T
 import Utils exposing (testId)
@@ -27,9 +27,6 @@ type alias Model =
 
 type alias PortDataModel =
     { goals : List Goal.Goal }
-
-
-port saveData : E.Value -> Cmd msg
 
 
 type Msg
@@ -51,7 +48,7 @@ main =
 
 
 init : E.Value -> ( Model, Cmd Msg )
-init savedGoalsJSON =
+init rpcCommand =
     let
         timeCmd =
             Task.perform GotTime T.now
@@ -60,8 +57,8 @@ init savedGoalsJSON =
             DC.civilToPosix <| DC.posixToCivil <| DU.resetTime <| T.millisToPosix 0
 
         recoveredGoals =
-            case D.decodeValue Goal.goalsDecoder savedGoalsJSON of
-                Ok goals ->
+            case Rpc.decodeRawCommand rpcCommand of
+                Ok (Rpc.InitialGoals goals) ->
                     goals
 
                 Err _ ->
@@ -116,16 +113,16 @@ update msg model =
                         deleteGoal id model.goals
                 in
                 ( { model | goals = updatedGoals }
-                , Cmd.batch [ saveData (Goal.goalsEncoder updatedGoals) ]
+                , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals updatedGoals ]
                 )
 
             else
                 let
-                    newGoals =
+                    updatedGoals =
                         updateGoals goalMsg id model.goals
                 in
-                ( { model | goals = newGoals }
-                , Cmd.batch [ saveData (Goal.goalsEncoder newGoals) ]
+                ( { model | goals = updatedGoals }
+                , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals updatedGoals ]
                 )
 
         GotTime now ->
@@ -153,7 +150,7 @@ update msg model =
                 , goals = goals
                 , canAddGoal = False
               }
-            , Cmd.batch [ saveData (Goal.goalsEncoder goals) ]
+            , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals goals ]
             )
 
 
