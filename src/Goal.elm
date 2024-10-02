@@ -1,148 +1,125 @@
 module Goal exposing (..)
 
 import Calendar
-import Html exposing (Html, button, div, li, section, span, text, textarea, ul)
+import DataModel exposing (Goal, TrackingEntry)
+import Day
+import DayNotes
+import Html exposing (Html, button, div, li, span, text, textarea)
 import Html.Attributes exposing (class, classList, title, value)
 import Html.Events exposing (onClick, onInput)
 import Icons
-import Json.Decode as D
-import Json.Encode as E
+import Task
 import Time
 import Utils
 
 
-type UiMsg
-    = ShowTrackingModal
-    | CancelTracking
-    | ShowDeleteModal
-    | CancelDeletion
-    | SelectDay Time.Posix
-    | SetTrackingNoteText String
-
-
-type Msg
-    = CommitGoalTracking Time.Posix
-    | DeleteGoal
-    | Ui UiMsg
-
-
-type alias TrackingRecord =
-    { time : Time.Posix
-    , note : String
-    }
-
-
-type alias GoalContext =
-    { daysOfMonth : List Time.Posix
+type alias Model =
+    { goal : String
+    , calendar : Calendar.Model
+    , trackingEntries : List TrackingEntry
     , today : Time.Posix
-    }
-
-
-type alias UiModel =
-    { showDeleteDialog : Bool
-    , showTrackingDialog : Bool
-    , selectedDay : Maybe Time.Posix
+    , showingDeleteDialog : Bool
+    , showingTrackingDialog : Bool
+    , showingNotes : Bool
     , noteText : String
     }
 
 
-type alias Goal =
-    { text : String
-    , trackingRecords : List TrackingRecord
-    , ui : UiModel
-    }
+type Msg
+    = CommitGoalTracking
+    | FinishGoalTracking Time.Posix
+    | DeleteGoal
+    | DeleteDayNote Time.Posix
+    | FromCalendar Calendar.Msg
+    | ShowTrackingModal
+    | CancelTracking
+    | ShowDeleteModal
+    | CancelDeletion
+    | SetTrackingNoteText String
 
 
-newUiModel : UiModel
-newUiModel =
-    UiModel False False Nothing ""
+toDataModel : Model -> Goal
+toDataModel model =
+    Goal model.goal model.trackingEntries
 
 
-newGoal : String -> Goal
-newGoal newGoalText =
-    Goal newGoalText [] newUiModel
+init : Time.Posix -> Goal -> Model
+init today goalData =
+    Model goalData.goal (Calendar.init today goalData.trackingEntries) goalData.trackingEntries today False False False ""
 
 
-shouldUiStayOpen : UiModel -> Bool
-shouldUiStayOpen ui =
-    let
-        showNotes =
-            case ui.selectedDay of
-                Just _ ->
-                    True
-
-                _ ->
-                    False
-    in
-    ui.showDeleteDialog || ui.showTrackingDialog || showNotes
+shouldUiStayOpen : Model -> Bool
+shouldUiStayOpen model =
+    model.showingDeleteDialog || model.showingTrackingDialog || Calendar.hasSelectedDay model.calendar
 
 
-updateUi : UiMsg -> UiModel -> UiModel
-updateUi uiMsg uiModel =
-    case uiMsg of
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
         SetTrackingNoteText str ->
-            { uiModel | noteText = str }
-
-        SelectDay selectedDay ->
-            let
-                dayToView =
-                    case uiModel.selectedDay of
-                        Just openedDay ->
-                            if Utils.isSameDay openedDay selectedDay then
-                                Nothing
-
-                            else
-                                Just selectedDay
-
-                        _ ->
-                            Just selectedDay
-            in
-            { uiModel
-                | showDeleteDialog = False
-                , showTrackingDialog = False
-                , selectedDay = dayToView
-            }
+            ( { model | noteText = str }, Cmd.none )
 
         ShowDeleteModal ->
-            { uiModel
-                | showDeleteDialog = True
-                , showTrackingDialog = False
-            }
+            ( { model
+                | showingDeleteDialog = True
+                , showingTrackingDialog = False
+              }
+            , Cmd.none
+            )
 
         CancelDeletion ->
-            { uiModel | showDeleteDialog = False }
+            ( { model | showingDeleteDialog = False }, Cmd.none )
 
         ShowTrackingModal ->
-            { uiModel
-                | showTrackingDialog = True
-                , showDeleteDialog = False
-            }
+            ( { model
+                | showingTrackingDialog = True
+                , showingDeleteDialog = False
+              }
+            , Cmd.none
+            )
 
         CancelTracking ->
-            { uiModel | showTrackingDialog = False }
-
-
-update : Msg -> Goal -> Goal
-update msg goal =
-    case msg of
-        Ui uiMsg ->
-            { goal | ui = updateUi uiMsg goal.ui }
+            ( { model | showingTrackingDialog = False }, Cmd.none )
 
         DeleteGoal ->
-            goal
+            ( model, Cmd.none )
 
-        CommitGoalTracking dayTracked ->
+        FromCalendar calendarMsg ->
+            ( { model | calendar = Calendar.update calendarMsg model.calendar }, Cmd.none )
+
+        FinishGoalTracking now ->
             let
-                oldUI =
-                    goal.ui
+                timestamp =
+                    Calendar.getSelectedDay model.calendar
+                        |> Maybe.map (\selectedDay -> Utils.setTimeOfDay (Day.getId selectedDay) now)
+                        |> Maybe.withDefault (Debug.log "NOW" now)
 
-                newUI =
-                    { oldUI | showTrackingDialog = False, noteText = "" }
+                newNotes =
+                    TrackingEntry timestamp model.noteText :: model.trackingEntries
             in
-            { goal
-                | trackingRecords = TrackingRecord dayTracked goal.ui.noteText :: goal.trackingRecords
-                , ui = newUI
-            }
+            ( { model
+                | showingTrackingDialog = False
+                , noteText = ""
+                , trackingEntries = newNotes
+                , calendar = Calendar.updateDays newNotes model.calendar
+              }
+            , Cmd.none
+            )
+
+        CommitGoalTracking ->
+            ( model, Task.perform FinishGoalTracking Time.now )
+
+        DeleteDayNote noteId ->
+            let
+                newNotes =
+                    List.filter (\entry -> not <| Utils.isSamePosix noteId entry.timestamp) model.trackingEntries
+            in
+            ( { model
+                | trackingEntries = newNotes
+                , calendar = Calendar.updateDays newNotes model.calendar
+              }
+            , Cmd.none
+            )
 
 
 isDeleteRequest : Msg -> Bool
@@ -155,148 +132,83 @@ isDeleteRequest msg =
             False
 
 
-goalsDecoder : D.Decoder (List Goal)
-goalsDecoder =
-    D.list goalDecoder
+getId : Model -> String
+getId =
+    .goal
 
 
-trackingRecordDecoder : D.Decoder TrackingRecord
-trackingRecordDecoder =
-    D.map2 TrackingRecord
-        (D.field "time" <| D.map Time.millisToPosix D.int)
-        (D.field "notes" D.string)
-
-
-goalDecoder : D.Decoder Goal
-goalDecoder =
-    D.map3 Goal
-        (D.field "text" D.string)
-        (D.field "daysTracked" (D.list trackingRecordDecoder))
-        (D.succeed newUiModel)
-
-
-goalsEncoder : List Goal -> E.Value
-goalsEncoder items =
-    E.list goalEncoder items
-
-
-trackingRecordEncoder : TrackingRecord -> E.Value
-trackingRecordEncoder { time, note } =
-    E.object
-        [ ( "time", E.int <| Time.posixToMillis time )
-        , ( "notes", E.string note )
-        ]
-
-
-goalEncoder : Goal -> E.Value
-goalEncoder goal =
-    E.object
-        [ ( "text", E.string goal.text )
-        , ( "daysTracked", E.list trackingRecordEncoder goal.trackingRecords )
-        ]
-
-
-getGoalId : Goal -> String
-getGoalId goal =
-    goal.text
-
-
-renderGoalBody : GoalContext -> Goal -> Html Msg
-renderGoalBody ctx goal =
-    let
-        calendarViewModel =
-            Calendar.ViewModel
-                ctx.daysOfMonth
-                ctx.today
-                (Ui << SelectDay)
-                (List.map .time goal.trackingRecords)
-                goal.ui.selectedDay
-                (shouldUiStayOpen goal.ui)
-
-        calendarView =
-            Calendar.view calendarViewModel
-
-        renderedNotes : Html Msg
-        renderedNotes =
-            case goal.ui.selectedDay of
-                Just day ->
-                    let
-                        notesOfSelectedDay =
-                            List.filter (\d -> Utils.isSameDay day d.time) goal.trackingRecords
-                    in
-                    renderListOfNotes day notesOfSelectedDay
-
-                Nothing ->
-                    div [] []
-    in
+renderGoalBody : Model -> Html Msg
+renderGoalBody model =
     div
         [ class "flex-1 flex flex-col p-3 justify-between items-center"
         , Utils.testId "goal-goal-body"
         ]
         [ span
             [ class "font-thin text-4xl pb-3 text-center" ]
-            [ text goal.text ]
-        , calendarView
-        , renderedNotes
+            [ text model.goal ]
+        , Html.map FromCalendar (Calendar.view model.calendar)
+        , renderSelectedDayNotes model
         ]
 
 
-renderDeleteAction : Goal -> Html Msg
-renderDeleteAction goal =
+renderDeleteAction : Model -> Html Msg
+renderDeleteAction model =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-red-100 dark:bg-red-900 opacity-100", goal.ui.showDeleteDialog )
+            , ( "bg-red-100 dark:bg-red-900 opacity-100", model.showingDeleteDialog )
             ]
         , title "Delete this goal"
-        , onClick <| Ui ShowDeleteModal
+        , onClick ShowDeleteModal
         , Utils.testId "goal-delete-action"
         ]
         [ Icons.deleteIcon ]
 
 
-renderTrackAction : Goal -> Html Msg
+renderTrackAction : Model -> Html Msg
 renderTrackAction goal =
     button
         [ classList
             [ ( "flex justify-center w-16 items-center transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "bg-green-100 dark:bg-green-900 opacity-100", goal.ui.showTrackingDialog )
+            , ( "bg-green-100 dark:bg-green-900 opacity-100", goal.showingTrackingDialog )
             ]
         , title "Track this goal for today"
-        , onClick <| Ui ShowTrackingModal
+        , onClick ShowTrackingModal
         , Utils.testId "goal-track-action"
         ]
         [ Icons.plusIcon ]
 
 
-renderTrackingDialog : Time.Posix -> Goal -> Html Msg
-renderTrackingDialog now goal =
+renderTrackingDialog : Model -> Html Msg
+renderTrackingDialog goal =
     let
         trackingDay =
-            Maybe.withDefault now goal.ui.selectedDay
+            Calendar.getSelectedDay goal.calendar
+                |> Maybe.map Day.getId
+                |> Maybe.withDefault goal.today
     in
     div
         [ classList
             [ ( "dialog", True )
-            , ( "dialog-hidden", not goal.ui.showTrackingDialog )
+            , ( "dialog-hidden", not goal.showingTrackingDialog )
             ]
         , Utils.testId "goal-tracking-dialog"
         ]
         [ span [] [ text <| "Record the " ++ Utils.formatDateFull trackingDay ++ ". Any comments?" ]
         , textarea
             [ class "textarea"
-            , value goal.ui.noteText
-            , onInput (Ui << SetTrackingNoteText)
+            , value goal.noteText
+            , onInput SetTrackingNoteText
             ]
             []
         , div [ class "text-center" ]
             [ button
-                [ onClick (CommitGoalTracking trackingDay)
+                [ onClick CommitGoalTracking
                 , class "dialog-green"
                 ]
                 [ text "Commit" ]
             , button
-                [ onClick <| Ui CancelTracking
+                [ onClick CancelTracking
                 , class "dialog-neutral"
                 ]
                 [ text "Cancel" ]
@@ -304,12 +216,12 @@ renderTrackingDialog now goal =
         ]
 
 
-renderDeletionDialog : Goal -> Html Msg
+renderDeletionDialog : Model -> Html Msg
 renderDeletionDialog goal =
     div
         [ classList
             [ ( "dialog", True )
-            , ( "dialog-hidden", not goal.ui.showDeleteDialog )
+            , ( "dialog-hidden", not goal.showingDeleteDialog )
             ]
         , Utils.testId "goal-deletion-dialog"
         ]
@@ -321,7 +233,7 @@ renderDeletionDialog goal =
                 ]
                 [ text "Delete" ]
             , button
-                [ onClick <| Ui CancelDeletion
+                [ onClick CancelDeletion
                 , class "dialog-neutral"
                 ]
                 [ text "Cancel" ]
@@ -329,39 +241,35 @@ renderDeletionDialog goal =
         ]
 
 
-renderListOfNotes : Time.Posix -> List TrackingRecord -> Html Msg
-renderListOfNotes day records =
+renderSelectedDayNotes : Model -> Html Msg
+renderSelectedDayNotes model =
     let
-        commentView =
-            \{ note } -> li [ class "p-1" ] [ text note ]
+        selectedDay =
+            Calendar.getSelectedDay model.calendar
+
+        notesForTheDay =
+            \day ->
+                List.filter (\entry -> Utils.isSameDay entry.timestamp (Day.getId day)) model.trackingEntries
     in
-    section
-        [ class "w-2/3 text-center mt-2"
-        , Utils.testId "goal-tracking-notes"
-        ]
-        [ div [] [ text <| Utils.formatDateFull day ]
-        , ul
-            [ class "divide-solid divide-y" ]
-            (if List.isEmpty records then
-                [ li [ class "p-1" ] [ text "No comments for this day" ] ]
+    case selectedDay of
+        Just day ->
+            DayNotes.view DeleteDayNote (Day.getId day) (notesForTheDay day)
 
-             else
-                List.map commentView records
-            )
-        ]
+        Nothing ->
+            div [] []
 
 
-renderGoal : GoalContext -> Goal -> Html Msg
-renderGoal ctx goal =
+view : Model -> Html Msg
+view model =
     li
         [ classList
             [ ( "group goal", True )
-            , ( "goal-open", shouldUiStayOpen goal.ui )
+            , ( "goal-open", shouldUiStayOpen model )
             ]
         ]
-        [ renderDeleteAction goal
-        , renderGoalBody ctx goal
-        , renderTrackAction goal
-        , renderTrackingDialog ctx.today goal
-        , renderDeletionDialog goal
+        [ renderDeleteAction model
+        , renderGoalBody model
+        , renderTrackAction model
+        , renderTrackingDialog model
+        , renderDeletionDialog model
         ]

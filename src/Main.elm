@@ -1,12 +1,12 @@
 module Main exposing (..)
 
 import Browser
-import Derberos.Date.Calendar as C
-import Derberos.Date.Core as DC
+import DataModel exposing (Goal)
 import Derberos.Date.Utils as DU
 import Goal
-import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text, ul)
-import Html.Attributes exposing (class, classList, disabled, href, id, target, value)
+import Goals
+import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text)
+import Html.Attributes exposing (class, classList, disabled, href, target, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Encode as E
 import Rpc
@@ -16,25 +16,21 @@ import Utils exposing (testId)
 
 
 type alias Model =
-    { goals : List Goal.Goal
+    { goals : Goals.Model
     , now : T.Posix
-    , daysOfMonth : List T.Posix
     , newGoalText : String
     , canAddGoal : Bool
     , showAbout : Bool
     }
 
 
-type alias PortDataModel =
-    { goals : List Goal.Goal }
-
-
 type Msg
     = SetNewGoalsText String
-    | GotTime T.Posix
+    | GotModel Model
     | AddGoal
     | ToggleAbout
-    | FromGoal String Goal.Msg
+    | FromGoals Goals.Msg
+    | Noop
 
 
 main : Program E.Value Model Msg
@@ -50,54 +46,37 @@ main =
 init : E.Value -> ( Model, Cmd Msg )
 init rpcCommand =
     let
-        timeCmd =
-            Task.perform GotTime T.now
+        cmd =
+            T.now
+                |> Task.map
+                    (\now ->
+                        let
+                            recoveredGoals =
+                                case Rpc.decodeRawCommand rpcCommand of
+                                    Ok (Rpc.InitialGoals goals) ->
+                                        goals
 
-        today =
-            DC.civilToPosix <| DC.posixToCivil <| DU.resetTime <| T.millisToPosix 0
-
-        recoveredGoals =
-            case Rpc.decodeRawCommand rpcCommand of
-                Ok (Rpc.InitialGoals goals) ->
-                    goals
-
-                Err _ ->
-                    []
+                                    Err _ ->
+                                        []
+                        in
+                        { goals = Goals.init now recoveredGoals
+                        , newGoalText = ""
+                        , now = DU.resetTime now
+                        , canAddGoal = False
+                        , showAbout = False
+                        }
+                    )
+                |> Task.perform GotModel
 
         model =
-            { goals = recoveredGoals
+            { goals = []
             , newGoalText = ""
-            , daysOfMonth = []
-            , now = today
+            , now = T.millisToPosix 0
             , canAddGoal = False
             , showAbout = False
             }
     in
-    ( model, timeCmd )
-
-
-deleteGoal : String -> List Goal.Goal -> List Goal.Goal
-deleteGoal id goals =
-    List.filter (\g -> id /= Goal.getGoalId g) goals
-
-
-updateGoals : Goal.Msg -> String -> List Goal.Goal -> List Goal.Goal
-updateGoals goalMsg id goals =
-    let
-        updateGoalFn =
-            \g ->
-                if g.text == id then
-                    Goal.update goalMsg g
-
-                else
-                    g
-    in
-    List.map updateGoalFn goals
-
-
-isGoalExist : List Goal.Goal -> String -> Bool
-isGoalExist goals newGoalText =
-    List.any (\g -> g.text == newGoalText) goals
+    ( model, cmd )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -106,70 +85,47 @@ update msg model =
         ToggleAbout ->
             ( { model | showAbout = not model.showAbout }, Cmd.none )
 
-        FromGoal id goalMsg ->
-            if Goal.isDeleteRequest goalMsg then
-                let
-                    updatedGoals =
-                        deleteGoal id model.goals
-                in
-                ( { model | goals = updatedGoals }
-                , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals updatedGoals ]
-                )
-
-            else
-                let
-                    updatedGoals =
-                        updateGoals goalMsg id model.goals
-                in
-                ( { model | goals = updatedGoals }
-                , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals updatedGoals ]
-                )
-
-        GotTime now ->
+        FromGoals goalsMsg ->
             let
-                daysOfMonth =
-                    List.map DU.resetTime (C.getCurrentMonthDates T.utc now)
+                ( updatedGoals, goalsCmd ) =
+                    Goals.update goalsMsg model.goals
             in
-            ( { model | now = DU.resetTime now, daysOfMonth = daysOfMonth }, Cmd.none )
+            ( { model | goals = updatedGoals }
+            , Cmd.batch
+                [ Rpc.sendCommand <| Rpc.SaveGoals << Goals.toDataModel <| updatedGoals
+                , Cmd.map FromGoals goalsCmd
+                ]
+            )
+
+        GotModel newModel ->
+            ( newModel, Cmd.none )
 
         SetNewGoalsText str ->
             ( { model
                 | newGoalText = str
-                , canAddGoal = not <| String.isEmpty str || isGoalExist model.goals str
+                , canAddGoal = not <| String.isEmpty str || Goals.isGoalExist str model.goals
               }
             , Cmd.none
             )
 
         AddGoal ->
             let
-                goals =
-                    Goal.newGoal model.newGoalText :: model.goals
+                goal =
+                    Goal model.newGoalText []
+
+                newGoals =
+                    Goals.addGoal model.now goal model.goals
             in
             ( { model
                 | newGoalText = ""
-                , goals = goals
+                , goals = newGoals
                 , canAddGoal = False
               }
-            , Cmd.batch [ Rpc.sendCommand <| Rpc.SaveGoals goals ]
+            , Rpc.sendCommand <| Rpc.SaveGoals <| List.map Goal.toDataModel newGoals
             )
 
-
-renderGoals : Model -> List Goal.Goal -> Html Msg
-renderGoals model items =
-    case items of
-        [] ->
-            section [ class "text-gray-400 dark:text-gray-700 text-3xl font-thin" ] [ text "Add your first goal" ]
-
-        goals ->
-            let
-                ctx =
-                    Goal.GoalContext model.daysOfMonth model.now
-
-                render =
-                    \g -> Html.map (FromGoal (Goal.getGoalId g)) (Goal.renderGoal ctx g)
-            in
-            ul [ class "flex-1 flex flex-col justify-center" ] <|
-                List.map render goals
+        Noop ->
+            ( model, Cmd.none )
 
 
 myStory : String
@@ -238,7 +194,7 @@ view model =
             [ class "flex-1 flex flex-col items-center justify-center"
             , testId "app-body"
             ]
-            [ renderGoals model model.goals ]
+            [ Html.map FromGoals (Goals.view model.goals) ]
         , renderAbout model
         , footer
             [ class "flex gap-4 justify-center p-4" ]

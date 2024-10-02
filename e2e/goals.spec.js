@@ -56,3 +56,36 @@ test("can track a goal", async ({ page }) => {
     await page.getByRole("button", { name: "Commit" }).click();
     await expect(page.locator("button.bg-green-300")).toBeVisible();
 });
+
+test("can add and remove notes", async ({ page }) => {
+    await page.goto("/");
+
+    await page.getByRole("textbox").click();
+    await page.getByRole("textbox").fill("Test Goal");
+    await page.getByRole("button", { name: "Add a goal" }).click();
+    await page.getByTestId("goal-track-action").click();
+    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
+    await page
+        .getByTestId("goal-tracking-dialog")
+        .getByRole("textbox")
+        .fill("test note 1");
+    await page.getByRole("button", { name: "Commit" }).click();
+    await page.getByTestId("goal-track-action").click();
+    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
+    await page
+        .getByTestId("goal-tracking-dialog")
+        .getByRole("textbox")
+        .fill("test note 2");
+    await page.getByRole("button", { name: "Commit" }).click();
+    await page.getByRole("button", { name: "1", exact: true }).click();
+    await expect(page.getByText("test note 1")).toBeVisible();
+    await expect(page.getByText("test note 2")).toBeVisible();
+    await page
+        .getByTestId("goal-tracking-notes")
+        .locator("li")
+        .filter({ hasText: "test note 1" })
+        .getByTestId("delete-note-btn")
+        .click();
+    await expect(page.getByText("test note 1")).not.toBeVisible();
+    await expect(page.getByText("test note 2")).toBeVisible();
+});

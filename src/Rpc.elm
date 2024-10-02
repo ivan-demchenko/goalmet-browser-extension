@@ -1,16 +1,16 @@
 port module Rpc exposing (InboundCommand(..), OutboundCommand(..), decodeRawCommand, sendCommand)
 
-import Goal
+import DataModel
 import Json.Decode as D
 import Json.Encode as E
 
 
 type InboundCommand
-    = InitialGoals (List Goal.Goal)
+    = InitialGoals (List DataModel.Goal)
 
 
 type OutboundCommand
-    = SaveGoals (List Goal.Goal)
+    = SaveGoals (List DataModel.Goal)
 
 
 port sendRPC : E.Value -> Cmd msg
@@ -23,7 +23,7 @@ inboundCommandDecoder =
             (\command ->
                 case command of
                     "initial-goals" ->
-                        D.field "payload" <| D.map InitialGoals Goal.goalsDecoder
+                        D.field "payload" <| D.map InitialGoals (D.list DataModel.goalDecoder)
 
                     _ ->
                         D.fail ("Unknown PRC command: " ++ command)
@@ -41,7 +41,7 @@ outboundCommandEncoder cmd =
         SaveGoals goals ->
             E.object
                 [ ( "command", E.string "save-goals" )
-                , ( "payload", Goal.goalsEncoder goals )
+                , ( "payload", E.list DataModel.goalEncoder goals )
                 ]
 
 
