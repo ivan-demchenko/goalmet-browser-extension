@@ -92,7 +92,7 @@ update msg model =
                 timestamp =
                     Calendar.getSelectedDay model.calendar
                         |> Maybe.map (\selectedDay -> Utils.setTimeOfDay (Day.getId selectedDay) now)
-                        |> Maybe.withDefault (Debug.log "NOW" now)
+                        |> Maybe.withDefault now
 
                 newNotes =
                     TrackingEntry timestamp model.noteText :: model.trackingEntries

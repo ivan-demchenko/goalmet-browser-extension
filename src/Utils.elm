@@ -5,14 +5,7 @@ import Derberos.Date.Core as TimeCore
 import Derberos.Date.Utils as DDU
 import Html exposing (Attribute)
 import Html.Attributes exposing (attribute)
-import Random
 import Time
-import UUID
-
-
-strToUUID : String -> UUID.UUID
-strToUUID str =
-    str |> String.toList |> List.map Char.toCode |> List.sum |> (\seed -> Random.step UUID.generator (Random.initialSeed seed) |> Tuple.first)
 
 
 getDaysOfMonth : Time.Posix -> List Time.Posix
@@ -42,10 +35,10 @@ setTimeOfDay : Time.Posix -> Time.Posix -> Time.Posix
 setTimeOfDay dest src =
     let
         { year, month, day } =
-            TimeCore.posixToCivil dest |> Debug.log "T1"
+            TimeCore.posixToCivil dest
 
         { hour, minute, second, millis } =
-            TimeCore.posixToCivil src |> Debug.log "T2"
+            TimeCore.posixToCivil src
     in
     TimeCore.civilToPosix <| TimeCore.newDateRecord year month day hour minute second millis Time.utc
 
