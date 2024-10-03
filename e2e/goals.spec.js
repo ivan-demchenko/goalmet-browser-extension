@@ -61,31 +61,35 @@ test("can add and remove notes", async ({ page }) => {
     await page.goto("/");
 
     await page.getByRole("textbox").click();
-    await page.getByRole("textbox").fill("Test Goal");
+    await page.getByRole("textbox").fill("Test Goal 1");
     await page.getByRole("button", { name: "Add a goal" }).click();
-    await page.getByTestId("goal-track-action").click();
-    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
-    await page
-        .getByTestId("goal-tracking-dialog")
-        .getByRole("textbox")
-        .fill("test note 1");
-    await page.getByRole("button", { name: "Commit" }).click();
-    await page.getByTestId("goal-track-action").click();
-    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
-    await page
-        .getByTestId("goal-tracking-dialog")
-        .getByRole("textbox")
-        .fill("test note 2");
-    await page.getByRole("button", { name: "Commit" }).click();
+    await expect(page.getByText("Test Goal")).toBeVisible();
     await page.getByRole("button", { name: "1", exact: true }).click();
-    await expect(page.getByText("test note 1")).toBeVisible();
-    await expect(page.getByText("test note 2")).toBeVisible();
+    await page.getByTestId("goal-track-action").click();
+    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
+    await page
+        .getByTestId("goal-tracking-dialog")
+        .getByRole("textbox")
+        .fill("Note 1");
+    await page.getByRole("button", { name: "Commit" }).click();
+    await page.getByTestId("goal-track-action").click();
+    await page.getByTestId("goal-tracking-dialog").getByRole("textbox").click();
+    await page
+        .getByTestId("goal-tracking-dialog")
+        .getByRole("textbox")
+        .fill("Note 2");
+    await page.getByRole("button", { name: "Commit" }).click();
+    await expect(page.getByText("Note 1")).toBeVisible();
+    await expect(page.getByText("Note 2")).toBeVisible();
     await page
         .getByTestId("goal-tracking-notes")
-        .locator("li")
-        .filter({ hasText: "test note 1" })
+        .locator("div")
+        .filter({ hasText: "Note 1" })
         .getByTestId("delete-note-btn")
         .click();
-    await expect(page.getByText("test note 1")).not.toBeVisible();
-    await expect(page.getByText("test note 2")).toBeVisible();
+    await expect(page.getByText("Note 1")).not.toBeVisible();
+    await expect(page.getByText("Note 2")).toBeVisible();
+    await expect(
+        page.getByTestId("goal-tracking-notes").getByRole("list")
+    ).toContainText("Note 2");
 });

@@ -12,8 +12,8 @@ test.use({
                         name: "goals",
                         value: JSON.stringify([
                             {
-                                text: "Test goal",
-                                daysTracked: [],
+                                goal: "Test goal",
+                                trackingEntries: [],
                             },
                         ]),
                     },
