@@ -30,7 +30,6 @@ type Msg
     | AddGoal
     | ToggleAbout
     | FromGoals Goals.Msg
-    | Noop
 
 
 main : Program E.Value Model Msg
@@ -46,11 +45,13 @@ main =
 init : E.Value -> ( Model, Cmd Msg )
 init rpcCommand =
     let
+        cmd : Cmd Msg
         cmd =
             T.now
                 |> Task.map
                     (\now ->
                         let
+                            recoveredGoals : List Goal
                             recoveredGoals =
                                 case Rpc.decodeRawCommand rpcCommand of
                                     Ok (Rpc.InitialGoals goals) ->
@@ -68,6 +69,7 @@ init rpcCommand =
                     )
                 |> Task.perform GotModel
 
+        model : Model
         model =
             { goals = []
             , newGoalText = ""
@@ -92,7 +94,7 @@ update msg model =
             in
             ( { model | goals = updatedGoals }
             , Cmd.batch
-                [ Rpc.sendCommand <| Rpc.SaveGoals << Goals.toDataModel <| updatedGoals
+                [ Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel <| updatedGoals
                 , Cmd.map FromGoals goalsCmd
                 ]
             )
@@ -110,9 +112,11 @@ update msg model =
 
         AddGoal ->
             let
+                goal : Goal
                 goal =
                     Goal model.newGoalText []
 
+                newGoals : Goals.Model
                 newGoals =
                     Goals.addGoal model.now goal model.goals
             in
@@ -123,9 +127,6 @@ update msg model =
               }
             , Rpc.sendCommand <| Rpc.SaveGoals <| List.map Goal.toDataModel newGoals
             )
-
-        Noop ->
-            ( model, Cmd.none )
 
 
 myStory : String

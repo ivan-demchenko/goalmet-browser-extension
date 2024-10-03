@@ -89,11 +89,13 @@ update msg model =
 
         FinishGoalTracking now ->
             let
+                timestamp : Time.Posix
                 timestamp =
                     Calendar.getSelectedDay model.calendar
                         |> Maybe.map (\selectedDay -> Utils.setTimeOfDay (Day.getId selectedDay) now)
                         |> Maybe.withDefault now
 
+                newNotes : List TrackingEntry
                 newNotes =
                     TrackingEntry timestamp model.noteText :: model.trackingEntries
             in
@@ -111,6 +113,7 @@ update msg model =
 
         DeleteDayNote noteId ->
             let
+                newNotes : List TrackingEntry
                 newNotes =
                     List.filter (\entry -> not <| Utils.isSamePosix noteId entry.timestamp) model.trackingEntries
             in
@@ -182,6 +185,7 @@ renderTrackAction goal =
 renderTrackingDialog : Model -> Html Msg
 renderTrackingDialog goal =
     let
+        trackingDay : Time.Posix
         trackingDay =
             Calendar.getSelectedDay goal.calendar
                 |> Maybe.map Day.getId
@@ -244,16 +248,21 @@ renderDeletionDialog goal =
 renderSelectedDayNotes : Model -> Html Msg
 renderSelectedDayNotes model =
     let
+        selectedDay : Maybe Day.Model
         selectedDay =
             Calendar.getSelectedDay model.calendar
-
-        notesForTheDay =
-            \day ->
-                List.filter (\entry -> Utils.isSameDay entry.timestamp (Day.getId day)) model.trackingEntries
     in
     case selectedDay of
         Just day ->
-            DayNotes.view DeleteDayNote (Day.getId day) (notesForTheDay day)
+            let
+                dayId : Time.Posix
+                dayId =
+                    Day.getId day
+            in
+            DayNotes.view
+                DeleteDayNote
+                dayId
+                (List.filter (Utils.isSameDay dayId << .timestamp) model.trackingEntries)
 
         Nothing ->
             div [] []

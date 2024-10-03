@@ -1,4 +1,4 @@
-module Calendar exposing (..)
+module Calendar exposing (Model, Msg(..), getSelectedDay, hasSelectedDay, init, update, updateDays, view)
 
 import DataModel exposing (TrackingEntry)
 import Day
@@ -21,9 +21,11 @@ type Msg
 init : Time.Posix -> List TrackingEntry -> Model
 init today trackingEntries =
     let
+        timeFound : Time.Posix -> Bool
         timeFound =
             \timestamp -> List.any (\entry -> Utils.isSameDay timestamp entry.timestamp) trackingEntries
 
+        days : List Day.Model
         days =
             Utils.getDaysOfMonth today
                 |> List.map
@@ -31,6 +33,7 @@ init today trackingEntries =
                         Day.initEmpty (timeFound timestamp) timestamp
                     )
 
+        monthName : String
         monthName =
             Utils.monthToStr <| Time.toMonth Time.utc today
     in
@@ -42,6 +45,7 @@ update msg model =
     case msg of
         ClickOnDay timestamp ->
             let
+                updateDay : Day.Model -> Day.Model
                 updateDay =
                     \day ->
                         case ( Day.isSelected day, Day.match timestamp day ) of
@@ -63,6 +67,7 @@ update msg model =
 updateDays : List TrackingEntry -> Model -> Model
 updateDays entries model =
     let
+        updateDay : Day.Model -> Day.Model
         updateDay =
             \day ->
                 List.any (\entry -> Utils.isSameDay (Day.getId day) entry.timestamp) entries

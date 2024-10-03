@@ -73,6 +73,7 @@ view model =
 
         goals ->
             let
+                render : Goal.Model -> Html Msg
                 render =
                     \goal -> Html.map (FromGoal (Goal.getId goal)) (Goal.view goal)
             in

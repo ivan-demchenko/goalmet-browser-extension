@@ -64,8 +64,9 @@ classOfStatus model =
 view : (Time.Posix -> msg) -> Model -> Html msg
 view handleClick model =
     let
+        dayStr : String
         dayStr =
-            String.fromInt << Time.toDay Time.utc <| model.timestamp
+            String.fromInt <| Time.toDay Time.utc <| model.timestamp
     in
     button
         [ classList

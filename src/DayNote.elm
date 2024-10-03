@@ -8,11 +8,6 @@ import Time
 import Utils
 
 
-getTimestamp : TrackingEntry -> Time.Posix
-getTimestamp =
-    .timestamp
-
-
 view : (Time.Posix -> msg) -> TrackingEntry -> Html msg
 view deleteNote model =
     div

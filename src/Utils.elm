@@ -1,4 +1,4 @@
-module Utils exposing (..)
+module Utils exposing (formatDateFull, getDaysOfMonth, isSameDay, isSamePosix, monthToStr, setTimeOfDay, testId)
 
 import Derberos.Date.Calendar as DDC
 import Derberos.Date.Core as TimeCore
@@ -86,9 +86,11 @@ monthToStr month =
 formatDateFull : Time.Posix -> String
 formatDateFull t =
     let
+        day : String
         day =
             Time.toDay Time.utc t |> String.fromInt
 
+        month : String
         month =
             Time.toMonth Time.utc t |> monthToStr
     in
