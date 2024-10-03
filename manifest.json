@@ -1,6 +1,6 @@
 {
   "name": "GoalMet - Achieve your goals",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Track goals daily, visualize progress, and stay focused with a minimalist new-tab reminder. Boost productivity, avoid distractions.",
   "permissions": ["storage"],
   "manifest_version": 3,
