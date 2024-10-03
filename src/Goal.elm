@@ -28,7 +28,7 @@ type alias Model =
 type Msg
     = CommitGoalTracking
     | FinishGoalTracking Time.Posix
-    | DeleteGoal
+    | DeleteGoal String
     | DeleteDayNote Time.Posix
     | FromCalendar Calendar.Msg
     | ShowTrackingModal
@@ -53,11 +53,11 @@ shouldUiStayOpen model =
     model.showingDeleteDialog || model.showingTrackingDialog || Calendar.hasSelectedDay model.calendar
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, Maybe String )
 update msg model =
     case msg of
         SetTrackingNoteText str ->
-            ( { model | noteText = str }, Cmd.none )
+            ( { model | noteText = str }, Cmd.none, Nothing )
 
         ShowDeleteModal ->
             ( { model
@@ -65,10 +65,11 @@ update msg model =
                 , showingTrackingDialog = False
               }
             , Cmd.none
+            , Nothing
             )
 
         CancelDeletion ->
-            ( { model | showingDeleteDialog = False }, Cmd.none )
+            ( { model | showingDeleteDialog = False }, Cmd.none, Nothing )
 
         ShowTrackingModal ->
             ( { model
@@ -76,16 +77,17 @@ update msg model =
                 , showingDeleteDialog = False
               }
             , Cmd.none
+            , Nothing
             )
 
         CancelTracking ->
-            ( { model | showingTrackingDialog = False }, Cmd.none )
+            ( { model | showingTrackingDialog = False }, Cmd.none, Nothing )
 
-        DeleteGoal ->
-            ( model, Cmd.none )
+        DeleteGoal id ->
+            ( model, Cmd.none, Just id )
 
         FromCalendar calendarMsg ->
-            ( { model | calendar = Calendar.update calendarMsg model.calendar }, Cmd.none )
+            ( { model | calendar = Calendar.update calendarMsg model.calendar }, Cmd.none, Nothing )
 
         FinishGoalTracking now ->
             let
@@ -106,10 +108,11 @@ update msg model =
                 , calendar = Calendar.updateDays newNotes model.calendar
               }
             , Cmd.none
+            , Nothing
             )
 
         CommitGoalTracking ->
-            ( model, Task.perform FinishGoalTracking Time.now )
+            ( model, Task.perform FinishGoalTracking Time.now, Nothing )
 
         DeleteDayNote noteId ->
             let
@@ -122,17 +125,18 @@ update msg model =
                 , calendar = Calendar.updateDays newNotes model.calendar
               }
             , Cmd.none
+            , Nothing
             )
 
 
-isDeleteRequest : Msg -> Bool
-isDeleteRequest msg =
-    case msg of
-        DeleteGoal ->
-            True
 
-        _ ->
-            False
+-- isDeleteRequest : Msg -> Bool
+-- isDeleteRequest msg =
+--     case msg of
+--         DeleteGoal ->
+--             True
+--         _ ->
+--             False
 
 
 getId : Model -> String
@@ -221,18 +225,18 @@ renderTrackingDialog goal =
 
 
 renderDeletionDialog : Model -> Html Msg
-renderDeletionDialog goal =
+renderDeletionDialog model =
     div
         [ classList
             [ ( "dialog", True )
-            , ( "dialog-hidden", not goal.showingDeleteDialog )
+            , ( "dialog-hidden", not model.showingDeleteDialog )
             ]
         , Utils.testId "goal-deletion-dialog"
         ]
         [ div [ class "mb-2" ] [ text "Are you sure you want to delete it?" ]
         , div [ class "text-center" ]
             [ button
-                [ onClick DeleteGoal
+                [ onClick (DeleteGoal model.goal)
                 , class "dialog-danger"
                 ]
                 [ text "Delete" ]

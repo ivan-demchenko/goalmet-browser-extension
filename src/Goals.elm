@@ -4,6 +4,7 @@ import DataModel
 import Goal
 import Html exposing (Html, section, text, ul)
 import Html.Attributes exposing (class)
+import Task
 import Time
 
 
@@ -13,6 +14,7 @@ type alias Model =
 
 type Msg
     = FromGoal String Goal.Msg
+    | DeleteGoal String
 
 
 init : Time.Posix -> List DataModel.Goal -> Model
@@ -33,31 +35,41 @@ isGoalExist goalText model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DeleteGoal id ->
+            ( List.filter (\g -> id /= g.goal) model
+            , Cmd.none
+            )
+
         FromGoal id goalMsg ->
-            if Goal.isDeleteRequest goalMsg then
-                ( List.filter (\g -> id /= g.goal) model
-                , Cmd.none
-                )
+            let
+                ( newGoals, cmds ) =
+                    List.map
+                        (\goal ->
+                            if id == Goal.getId goal then
+                                let
+                                    goalId : String
+                                    goalId =
+                                        Goal.getId goal
 
-            else
-                let
-                    ( newGoals, cmds ) =
-                        List.map
-                            (\goal ->
-                                if id == Goal.getId goal then
-                                    let
-                                        ( newGoal, goalCmd ) =
-                                            Goal.update goalMsg goal
-                                    in
-                                    ( newGoal, Cmd.map (FromGoal (Goal.getId goal)) goalCmd )
+                                    ( newGoal, goalCmd, toDelete ) =
+                                        Goal.update goalMsg goal
 
-                                else
-                                    ( goal, Cmd.none )
-                            )
-                            model
-                            |> List.unzip
-                in
-                ( newGoals, Cmd.batch cmds )
+                                    followUp : Cmd Msg
+                                    followUp =
+                                        Maybe.map (Task.perform DeleteGoal << Task.succeed) toDelete
+                                            |> Maybe.withDefault Cmd.none
+                                in
+                                ( newGoal
+                                , Cmd.batch [ Cmd.map (FromGoal goalId) goalCmd, followUp ]
+                                )
+
+                            else
+                                ( goal, Cmd.none )
+                        )
+                        model
+                        |> List.unzip
+            in
+            ( newGoals, Cmd.batch cmds )
 
 
 addGoal : Time.Posix -> DataModel.Goal -> Model -> Model
