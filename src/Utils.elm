@@ -32,7 +32,7 @@ isSameDay t1 t2 =
 
 
 setTimeOfDay : Time.Posix -> Time.Posix -> Time.Posix
-setTimeOfDay dest src =
+setTimeOfDay src dest =
     let
         { year, month, day } =
             TimeCore.posixToCivil dest

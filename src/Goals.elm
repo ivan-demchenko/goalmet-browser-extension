@@ -4,7 +4,6 @@ import DataModel
 import Goal
 import Html exposing (Html, section, text, ul)
 import Html.Attributes exposing (class)
-import Task
 import Time
 
 
@@ -14,7 +13,13 @@ type alias Model =
 
 type Msg
     = FromGoal String Goal.Msg
-    | DeleteGoal String
+
+
+type alias Args msg =
+    { toSelf : Msg -> msg
+    , onShowTrackingDialog : String -> Maybe Time.Posix -> msg
+    , onShowDeleteDialog : String -> msg
+    }
 
 
 init : Time.Posix -> List DataModel.Goal -> Model
@@ -32,36 +37,49 @@ isGoalExist goalText model =
     List.any (\goal -> goal.goal == goalText) model
 
 
+deleteGoal : String -> Model -> Model
+deleteGoal id model =
+    List.filter (\g -> id /= g.goal) model
+
+
+setGoalStayOpen : Bool -> String -> Model -> Model
+setGoalStayOpen val goalId model =
+    List.map
+        (\goal ->
+            if goalId == Goal.getId goal then
+                Goal.setStayOpen val goal
+
+            else
+                goal
+        )
+        model
+
+
+addTrackingEntry : String -> Time.Posix -> String -> Model -> Model
+addTrackingEntry goalId time note model =
+    List.map
+        (\g ->
+            if goalId == Goal.getId g then
+                Goal.addTrackingEntry time note g
+
+            else
+                g
+        )
+        model
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        DeleteGoal id ->
-            ( List.filter (\g -> id /= g.goal) model
-            , Cmd.none
-            )
-
         FromGoal id goalMsg ->
             let
                 ( newGoals, cmds ) =
                     List.map
                         (\goal ->
                             if id == Goal.getId goal then
-                                let
-                                    goalId : String
-                                    goalId =
-                                        Goal.getId goal
-
-                                    ( newGoal, goalCmd, toDelete ) =
-                                        Goal.update goalMsg goal
-
-                                    followUp : Cmd Msg
-                                    followUp =
-                                        Maybe.map (Task.perform DeleteGoal << Task.succeed) toDelete
-                                            |> Maybe.withDefault Cmd.none
-                                in
-                                ( newGoal
-                                , Cmd.batch [ Cmd.map (FromGoal goalId) goalCmd, followUp ]
-                                )
+                                Tuple.mapSecond
+                                    (Cmd.map (FromGoal (Goal.getId goal)))
+                                    (Goal.update goalMsg goal)
 
                             else
                                 ( goal, Cmd.none )
@@ -77,17 +95,23 @@ addGoal timestamp goal model =
     Goal.init timestamp goal :: model
 
 
-view : Model -> Html Msg
-view model =
+view : Args msg -> Model -> Html msg
+view args model =
     case model of
         [] ->
-            section [ class "text-gray-400 dark:text-gray-700 text-3xl font-thin" ] [ text "Add your first goal" ]
+            section
+                [ class "text-gray-400 dark:text-gray-700 text-3xl font-thin" ]
+                [ text "Add your first goal" ]
 
         goals ->
-            let
-                render : Goal.Model -> Html Msg
-                render =
-                    \goal -> Html.map (FromGoal (Goal.getId goal)) (Goal.view goal)
-            in
             ul [ class "flex-1 flex flex-col justify-center" ] <|
-                List.map render goals
+                List.map
+                    (\goal ->
+                        Goal.view
+                            { toSelf = args.toSelf << FromGoal (Goal.getId goal)
+                            , onShowDeleteDialog = args.onShowDeleteDialog
+                            , onShowTrackingDialog = args.onShowTrackingDialog
+                            }
+                            goal
+                    )
+                    goals

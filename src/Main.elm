@@ -4,14 +4,21 @@ import Browser
 import DataModel exposing (Goal)
 import Derberos.Date.Utils as DU
 import Goals
-import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text)
+import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, span, text, textarea)
 import Html.Attributes exposing (class, classList, disabled, href, target, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Encode as E
 import Rpc
 import Task
 import Time as T
+import UI.Dialog as UiDialog
 import Utils exposing (testId)
+
+
+type alias TrackingDialogView =
+    { goal : String
+    , trackingDay : T.Posix
+    }
 
 
 type alias Model =
@@ -20,6 +27,9 @@ type alias Model =
     , newGoalText : String
     , canAddGoal : Bool
     , showAbout : Bool
+    , goalToDelete : Maybe String
+    , goalToTrack : Maybe TrackingDialogView
+    , noteText : String
     }
 
 
@@ -29,6 +39,14 @@ type Msg
     | AddGoal
     | ToggleAbout
     | FromGoals Goals.Msg
+    | ShowDeleteDialog String
+    | HideDeleteDialog
+    | DeleteGoal String
+    | ShowTrackingDialog String (Maybe T.Posix)
+    | HideTrackingDialog
+    | StartGoalTracking
+    | GotTrackingTime T.Posix
+    | SetNoteText String
 
 
 main : Program E.Value Model Msg
@@ -64,6 +82,9 @@ init rpcCommand =
                         , today = DU.resetTime now
                         , canAddGoal = False
                         , showAbout = False
+                        , goalToDelete = Nothing
+                        , goalToTrack = Nothing
+                        , noteText = ""
                         }
                     )
                 |> Task.perform GotModel
@@ -75,6 +96,9 @@ init rpcCommand =
             , today = T.millisToPosix 0
             , canAddGoal = False
             , showAbout = False
+            , goalToDelete = Nothing
+            , goalToTrack = Nothing
+            , noteText = ""
             }
     in
     ( model, cmd )
@@ -83,6 +107,87 @@ init rpcCommand =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        SetNoteText str ->
+            ( { model | noteText = str }
+            , Cmd.none
+            )
+
+        ShowDeleteDialog goalId ->
+            ( { model
+                | goalToDelete = Just goalId
+                , goals = Goals.setGoalStayOpen True goalId model.goals
+              }
+            , Cmd.none
+            )
+
+        HideDeleteDialog ->
+            ( { model
+                | goalToDelete = Nothing
+                , goals =
+                    model.goalToDelete
+                        |> Maybe.map (\goalId -> Goals.setGoalStayOpen False goalId model.goals)
+                        |> Maybe.withDefault model.goals
+              }
+            , Cmd.none
+            )
+
+        DeleteGoal goalId ->
+            ( { model
+                | goals = Goals.deleteGoal goalId model.goals
+                , goalToDelete = Nothing
+              }
+            , Cmd.none
+            )
+
+        ShowTrackingDialog goalId maybeSelectedDay ->
+            let
+                timestamp : T.Posix
+                timestamp =
+                    maybeSelectedDay
+                        |> Maybe.withDefault model.today
+            in
+            ( { model
+                | goalToTrack = Just (TrackingDialogView goalId timestamp)
+                , goals = Goals.setGoalStayOpen True goalId model.goals
+              }
+            , Cmd.none
+            )
+
+        HideTrackingDialog ->
+            ( { model
+                | goalToTrack = Nothing
+                , goals =
+                    model.goalToTrack
+                        |> Maybe.map (\goalToTrack -> Goals.setGoalStayOpen False goalToTrack.goal model.goals)
+                        |> Maybe.withDefault model.goals
+              }
+            , Cmd.none
+            )
+
+        StartGoalTracking ->
+            ( model
+            , Task.perform GotTrackingTime T.now
+            )
+
+        GotTrackingTime time ->
+            case model.goalToTrack of
+                Just { goal, trackingDay } ->
+                    let
+                        timestamp : T.Posix
+                        timestamp =
+                            Utils.setTimeOfDay time trackingDay
+                    in
+                    ( { model
+                        | goals = Goals.addTrackingEntry goal timestamp model.noteText model.goals
+                        , noteText = ""
+                        , goalToTrack = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         ToggleAbout ->
             ( { model | showAbout = not model.showAbout }, Cmd.none )
 
@@ -170,6 +275,55 @@ renderAbout model =
         ]
 
 
+deleteGoalDialog : String -> Html Msg
+deleteGoalDialog goalName =
+    UiDialog.view
+        { primaryAction =
+            { onClick = DeleteGoal goalName
+            , label = "Yes, delete"
+            , style = UiDialog.Danger
+            }
+        , secondaryAction =
+            { onClick = HideDeleteDialog
+            , label = "No, dismiss"
+            , style = UiDialog.Neutral
+            }
+        , content =
+            [ span [] [ text <| "Are you sure you want to delete the goal " ++ goalName ]
+            ]
+        }
+
+
+trackGoalDialog : TrackingDialogView -> Html Msg
+trackGoalDialog { goal, trackingDay } =
+    let
+        trackingDayStr : String
+        trackingDayStr =
+            Utils.formatDateFull trackingDay
+    in
+    UiDialog.view
+        { primaryAction =
+            { onClick = StartGoalTracking
+            , label = "Commit"
+            , style = UiDialog.Success
+            }
+        , secondaryAction =
+            { onClick = HideTrackingDialog
+            , label = "Cancel"
+            , style = UiDialog.Neutral
+            }
+        , content =
+            [ p [ class "text-xl mb-2 text-gray-200 text-center" ] [ text goal ]
+            , p [ class "text-gray-200 text-center" ] [ text <| "Track your progress " ++ trackingDayStr ]
+            , textarea
+                [ class "textarea"
+                , onInput SetNoteText
+                ]
+                []
+            ]
+        }
+
+
 view : Model -> Html Msg
 view model =
     div [ class "h-full flex flex-col", testId "app-root" ]
@@ -194,7 +348,13 @@ view model =
             [ class "flex-1 flex flex-col items-center justify-center"
             , testId "app-body"
             ]
-            [ Html.map FromGoals (Goals.view model.goals) ]
+            [ Goals.view
+                { toSelf = FromGoals
+                , onShowDeleteDialog = ShowDeleteDialog
+                , onShowTrackingDialog = ShowTrackingDialog
+                }
+                model.goals
+            ]
         , renderAbout model
         , footer
             [ class "flex gap-4 justify-center p-4" ]
@@ -210,4 +370,10 @@ view model =
                 ]
                 [ text "Leave feedback" ]
             ]
+        , model.goalToDelete
+            |> Maybe.map deleteGoalDialog
+            |> Maybe.withDefault (div [] [])
+        , model.goalToTrack
+            |> Maybe.map trackGoalDialog
+            |> Maybe.withDefault (div [] [])
         ]

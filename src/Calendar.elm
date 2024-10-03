@@ -1,4 +1,4 @@
-module Calendar exposing (Model, Msg(..), getSelectedDay, hasSelectedDay, init, update, updateDays, view)
+module Calendar exposing (Model, Msg(..), getSelectedDay, init, setStayOpen, update, updateDays, view)
 
 import DataModel exposing (TrackingEntry)
 import Day
@@ -11,6 +11,7 @@ import Utils
 type alias Model =
     { days : List Day.Model
     , monthName : String
+    , stayOpen : Bool
     }
 
 
@@ -18,8 +19,8 @@ type Msg
     = ClickOnDay Time.Posix
 
 
-init : Time.Posix -> List TrackingEntry -> Model
-init today trackingEntries =
+init : Time.Posix -> List TrackingEntry -> Bool -> Model
+init today trackingEntries stayOpen =
     let
         timeFound : Time.Posix -> Bool
         timeFound =
@@ -37,7 +38,12 @@ init today trackingEntries =
         monthName =
             Utils.monthToStr <| Time.toMonth Time.utc today
     in
-    Model days monthName
+    Model days monthName stayOpen
+
+
+setStayOpen : Bool -> Model -> Model
+setStayOpen val model =
+    { model | stayOpen = val }
 
 
 update : Msg -> Model -> Model
@@ -48,7 +54,7 @@ update msg model =
                 updateDay : Day.Model -> Day.Model
                 updateDay =
                     \day ->
-                        case ( Day.isSelected day, Day.match timestamp day ) of
+                        case ( Day.isSelected day, Day.matchTime timestamp day ) of
                             ( True, True ) ->
                                 Day.unSelect day
 
@@ -60,8 +66,15 @@ update msg model =
 
                             _ ->
                                 day
+
+                updatedDays : List Day.Model
+                updatedDays =
+                    List.map updateDay model.days
             in
-            { model | days = List.map updateDay model.days }
+            { model
+                | days = updatedDays
+                , stayOpen = List.any Day.isSelected updatedDays
+            }
 
 
 updateDays : List TrackingEntry -> Model -> Model
@@ -76,11 +89,6 @@ updateDays entries model =
     { model | days = List.map updateDay model.days }
 
 
-hasSelectedDay : Model -> Bool
-hasSelectedDay model =
-    List.any Day.isSelected model.days
-
-
 getSelectedDay : Model -> Maybe Day.Model
 getSelectedDay model =
     List.filter Day.isSelected model.days |> List.head
@@ -91,7 +99,7 @@ view model =
     section
         [ classList
             [ ( "flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100", True )
-            , ( "opacity-100", hasSelectedDay model )
+            , ( "opacity-100", model.stayOpen )
             ]
         , Utils.testId "calendar-body"
         ]

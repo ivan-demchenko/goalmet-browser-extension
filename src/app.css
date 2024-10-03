@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+.dialog {
+    @apply fixed rounded-lg min-h-max max-h-min max-w-lg top-1/3 left-1/2 -translate-x-1/2 bg-slate-800;
+}
+
+.dialog-controls {
+    @apply bg-slate-700 p-4 rounded-bl-lg rounded-br-lg text-center;
+}
+
+.dialog-action-danger {
+    @apply py-1 px-4 bg-red-800 rounded text-red-200 font-semibold hover:bg-red-700 hover:text-white;
+}
+
+.dialog-action-success {
+    @apply py-1 px-4 bg-green-800 rounded text-green-200 font-semibold hover:bg-green-700 hover:text-white;
+}
+
+.dialog-action-neutral {
+    @apply py-1 px-4 rounded text-gray-400 font-semibold;
+}
+
 .add-goal-input {
     @apply w-1/3 p-1 border-b text-gray-800 border-gray-400 focus:border-b-green-500 focus:outline-none bg-transparent;
     @apply dark:border-gray-600 dark:text-gray-300;
@@ -30,31 +50,7 @@
     @apply flex items-center gap-1 transition-opacity opacity-0 group-hover:opacity-100;
 }
 
-.dialog {
-    @apply flex flex-col justify-center items-center p-2 absolute w-full h-full text-center bg-white/70 backdrop-blur-sm;
-    @apply dark:bg-black/20;
-}
-
-.dialog-hidden {
-    @apply hidden;
-}
-
-.dialog-green {
-    @apply px-2 bg-green-300 rounded mr-1;
-    @apply dark:text-green-200 dark:bg-green-700;
-}
-
-.dialog-danger {
-    @apply px-2 bg-red-300 rounded mr-1;
-    @apply dark:text-red-200 dark:bg-red-700;
-}
-
-.dialog-neutral {
-    @apply px-2 bg-gray-200 rounded;
-    @apply dark:text-gray-300 dark:bg-gray-700;
-}
-
 .textarea {
-    @apply border border-gray-200 mb-1 w-full;
+    @apply border border-gray-200 mb-1 w-full dark:text-white;
     @apply dark:bg-gray-800 dark:border-gray-600;
 }

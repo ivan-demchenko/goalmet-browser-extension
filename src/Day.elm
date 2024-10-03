@@ -24,8 +24,8 @@ getId =
     .timestamp
 
 
-match : Time.Posix -> Model -> Bool
-match test day =
+matchTime : Time.Posix -> Model -> Bool
+matchTime test day =
     Utils.isSameDay day.timestamp test
 
 
