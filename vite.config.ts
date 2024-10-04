@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, UserConfig } from "vite";
 import elmPlugin from "vite-plugin-elm";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import zipPack from "vite-plugin-zip-pack";
@@ -9,10 +9,14 @@ declare global {
     const __TARGET__: "production" | "development";
 }
 
-const getBaseConfig = (target: typeof __TARGET__) => ({
+const getBaseConfig = (target: typeof __TARGET__): UserConfig => ({
     base: "./",
     define: {
         __TARGET__: JSON.stringify(target),
+    },
+    server: {
+        host: "127.0.0.1",
+        port: 5173,
     },
     plugins: [
         elmPlugin(),
