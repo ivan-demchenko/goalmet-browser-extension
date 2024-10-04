@@ -129,16 +129,6 @@ update msg model =
             )
 
 
-
--- isDeleteRequest : Msg -> Bool
--- isDeleteRequest msg =
---     case msg of
---         DeleteGoal ->
---             True
---         _ ->
---             False
-
-
 getId : Model -> String
 getId =
     .goal
