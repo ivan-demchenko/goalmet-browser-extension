@@ -3,7 +3,6 @@ module Main exposing (..)
 import Browser
 import DataModel exposing (Goal)
 import Derberos.Date.Utils as DU
-import Goal
 import Goals
 import Html exposing (Html, a, button, div, footer, header, input, main_, p, section, text)
 import Html.Attributes exposing (class, classList, disabled, href, target, value)
@@ -17,7 +16,7 @@ import Utils exposing (testId)
 
 type alias Model =
     { goals : Goals.Model
-    , now : T.Posix
+    , today : T.Posix
     , newGoalText : String
     , canAddGoal : Bool
     , showAbout : Bool
@@ -57,12 +56,12 @@ init rpcCommand =
                                     Ok (Rpc.InitialGoals goals) ->
                                         goals
 
-                                    Err _ ->
+                                    _ ->
                                         []
                         in
                         { goals = Goals.init now recoveredGoals
                         , newGoalText = ""
-                        , now = DU.resetTime now
+                        , today = DU.resetTime now
                         , canAddGoal = False
                         , showAbout = False
                         }
@@ -73,7 +72,7 @@ init rpcCommand =
         model =
             { goals = []
             , newGoalText = ""
-            , now = T.millisToPosix 0
+            , today = T.millisToPosix 0
             , canAddGoal = False
             , showAbout = False
             }
@@ -118,14 +117,14 @@ update msg model =
 
                 newGoals : Goals.Model
                 newGoals =
-                    Goals.addGoal model.now goal model.goals
+                    Goals.addGoal model.today goal model.goals
             in
             ( { model
                 | newGoalText = ""
                 , goals = newGoals
                 , canAddGoal = False
               }
-            , Rpc.sendCommand <| Rpc.SaveGoals <| List.map Goal.toDataModel newGoals
+            , Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel newGoals
             )
 
 
