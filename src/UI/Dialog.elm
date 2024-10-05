@@ -23,6 +23,7 @@ type alias Config msg =
     { primaryAction : ActionConfig msg
     , secondaryAction : ActionConfig msg
     , content : List (Html msg)
+    , testId : String
     }
 
 
@@ -43,7 +44,7 @@ view : Config msg -> Html msg
 view conf =
     div
         [ class "dialog"
-        , Utils.testId "goal-tracking-dialog"
+        , Utils.testId conf.testId
         ]
         [ div
             [ class "p-4" ]

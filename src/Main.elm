@@ -132,11 +132,16 @@ update msg model =
             )
 
         DeleteGoal goalId ->
+            let
+                updatedGoals : Goals.Model
+                updatedGoals =
+                    Goals.deleteGoal goalId model.goals
+            in
             ( { model
-                | goals = Goals.deleteGoal goalId model.goals
+                | goals = updatedGoals
                 , goalToDelete = Nothing
               }
-            , Cmd.none
+            , Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel updatedGoals
             )
 
         ShowTrackingDialog goalId maybeSelectedDay ->
@@ -176,13 +181,17 @@ update msg model =
                         timestamp : T.Posix
                         timestamp =
                             Utils.setTimeOfDay time trackingDay
+
+                        updatedGoals : Goals.Model
+                        updatedGoals =
+                            Goals.addTrackingEntry goal timestamp model.noteText model.goals
                     in
                     ( { model
-                        | goals = Goals.addTrackingEntry goal timestamp model.noteText model.goals
+                        | goals = updatedGoals
                         , noteText = ""
                         , goalToTrack = Nothing
                       }
-                    , Cmd.none
+                    , Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel updatedGoals
                     )
 
                 Nothing ->
@@ -220,16 +229,16 @@ update msg model =
                 goal =
                     Goal model.newGoalText []
 
-                newGoals : Goals.Model
-                newGoals =
+                updatedGoals : Goals.Model
+                updatedGoals =
                     Goals.addGoal model.today goal model.goals
             in
             ( { model
                 | newGoalText = ""
-                , goals = newGoals
+                , goals = updatedGoals
                 , canAddGoal = False
               }
-            , Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel newGoals
+            , Rpc.sendCommand <| Rpc.SaveGoals <| Goals.toDataModel updatedGoals
             )
 
 
@@ -278,7 +287,8 @@ renderAbout model =
 deleteGoalDialog : String -> Html Msg
 deleteGoalDialog goalName =
     UiDialog.view
-        { primaryAction =
+        { testId = "delete-note-dialog"
+        , primaryAction =
             { onClick = DeleteGoal goalName
             , label = "Yes, delete"
             , style = UiDialog.Danger
@@ -302,7 +312,8 @@ trackGoalDialog { goal, trackingDay } =
             Utils.formatDateFull trackingDay
     in
     UiDialog.view
-        { primaryAction =
+        { testId = "track-goal-dialog"
+        , primaryAction =
             { onClick = StartGoalTracking
             , label = "Commit"
             , style = UiDialog.Success
