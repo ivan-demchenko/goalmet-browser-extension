@@ -56,11 +56,11 @@ addTrackingEntry time note model =
     let
         newEntries : List TrackingEntry
         newEntries =
-            { timestamp = time, note = note } :: model.trackingEntries
+            TrackingEntry time note :: model.trackingEntries
     in
     { model
         | trackingEntries = newEntries
-        , calendar = Calendar.init model.today newEntries True
+        , calendar = Calendar.updateDays newEntries model.calendar
     }
 
 

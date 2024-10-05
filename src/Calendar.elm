@@ -19,6 +19,11 @@ type Msg
     = ClickOnDay Time.Posix
 
 
+type UpdateStrategy
+    = SelectDay Time.Posix
+    | AlterTracking (List TrackingEntry)
+
+
 init : Time.Posix -> List TrackingEntry -> Bool -> Model
 init today trackingEntries stayOpen =
     let
@@ -46,30 +51,36 @@ setStayOpen val model =
     { model | stayOpen = val }
 
 
+updateDay : UpdateStrategy -> Day.Model -> Day.Model
+updateDay strategy day =
+    case strategy of
+        SelectDay timestamp ->
+            case ( Day.isSelected day, Day.matchTime timestamp day ) of
+                ( True, True ) ->
+                    Day.unSelect day
+
+                ( True, False ) ->
+                    Day.unSelect day
+
+                ( False, True ) ->
+                    Day.select day
+
+                _ ->
+                    day
+
+        AlterTracking entries ->
+            List.any (\entry -> Day.matchTime entry.timestamp day) entries
+                |> Day.setHasHistory day
+
+
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         ClickOnDay timestamp ->
             let
-                updateDay : Day.Model -> Day.Model
-                updateDay =
-                    \day ->
-                        case ( Day.isSelected day, Day.matchTime timestamp day ) of
-                            ( True, True ) ->
-                                Day.unSelect day
-
-                            ( True, False ) ->
-                                Day.unSelect day
-
-                            ( False, True ) ->
-                                Day.select day
-
-                            _ ->
-                                day
-
                 updatedDays : List Day.Model
                 updatedDays =
-                    List.map updateDay model.days
+                    List.map (updateDay (SelectDay timestamp)) model.days
             in
             { model
                 | days = updatedDays
@@ -79,14 +90,7 @@ update msg model =
 
 updateDays : List TrackingEntry -> Model -> Model
 updateDays entries model =
-    let
-        updateDay : Day.Model -> Day.Model
-        updateDay =
-            \day ->
-                List.any (\entry -> Utils.isSameDay (Day.getId day) entry.timestamp) entries
-                    |> Day.setHasHistory day
-    in
-    { model | days = List.map updateDay model.days }
+    { model | days = List.map (updateDay <| AlterTracking entries) model.days }
 
 
 getSelectedDay : Model -> Maybe Day.Model
